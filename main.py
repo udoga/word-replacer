@@ -18,10 +18,12 @@ class DropoutSubstituter:
         input_embeddings = self.get_input_embeddings(input_ids)
         self.apply_dropout(input_embeddings[target_position], self.dropout_rate)
         prediction_probs = self.get_prediction_probs(input_embeddings, target_position)
+        same_prediction_prob = prediction_probs[target_id].item()
         candidate_ids = torch.topk(prediction_probs, k=self.candidate_count, dim=0).indices
-        candidate_probs = prediction_probs[candidate_ids].tolist()
         candidates = [c.strip() for c in self.tokenizer.batch_decode(candidate_ids)]
-        return dict(zip(candidates, candidate_probs))
+        candidate_probs = prediction_probs[candidate_ids].tolist()
+        candidate_proposal_scores = self.get_proposal_scores(candidate_probs, same_prediction_prob)
+        return dict(zip(candidates, candidate_proposal_scores.tolist()))
 
     def get_token_ids(self, text):
         return self.tokenizer.encode(" " + text)
@@ -42,6 +44,12 @@ class DropoutSubstituter:
         dropout_count = round(dropout_rate * embedding_length)
         dropout_indices = np.random.choice(embedding_length, dropout_count, replace=False)
         embedding[dropout_indices] = 0
+
+    def get_proposal_scores(self, prediction_probs, same_prediction_prob):
+        return np.log(self.get_normalized_probs(prediction_probs, same_prediction_prob))
+
+    def get_normalized_probs(self, prediction_probs, same_prediction_prob):
+        return np.array(prediction_probs) / (1.0 - same_prediction_prob)
 
 tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
 model = RobertaForMaskedLM.from_pretrained('roberta-base', output_hidden_states=True)
