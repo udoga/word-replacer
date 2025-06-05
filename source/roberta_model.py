@@ -1,0 +1,26 @@
+import torch
+from torch import Tensor
+from transformers import RobertaTokenizer, RobertaForMaskedLM
+
+class RobertaModel:
+    def __init__(self):
+        self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+        self.model = RobertaForMaskedLM.from_pretrained('roberta-base', output_hidden_states=True)
+
+    def get_vocabulary_size(self):
+        return len(self.tokenizer)
+
+    def get_token_ids_from_text(self, text):
+        return self.tokenizer.encode(" " + text)
+
+    def get_tokens_from_ids(self, token_ids):
+        return [c.strip() for c in self.tokenizer.batch_decode(token_ids)]
+
+    def get_input_embeddings(self, token_ids) -> Tensor:
+        with torch.no_grad():
+            return self.model.get_input_embeddings()(torch.tensor([token_ids]))[0]
+
+    def get_prediction_logits(self, input_embeddings, target_position) -> Tensor:
+        with torch.no_grad():
+            model_output = self.model(inputs_embeds=input_embeddings.unsqueeze(0))
+        return model_output.logits[0][target_position]
