@@ -2,6 +2,8 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from output_analyzer import OutputAnalyzer
+
 class DropoutSubstituter:
     def __init__(self, model, dropout_rate, candidate_count):
         self.model = model
@@ -14,8 +16,8 @@ class DropoutSubstituter:
         target_position = input_ids.index(target_id)
         input_embeddings = self.model.get_input_embeddings(input_ids)
         input_embeddings[target_position] = self.apply_dropout(input_embeddings[target_position], self.dropout_rate)
-        original_output = self.model.get_output_from_embeddings(input_embeddings)
-        prediction_logits = self.model.get_prediction_logits(original_output, 0, target_position)
+        output_analyzer = OutputAnalyzer(self.model.get_output_from_embeddings(input_embeddings))
+        prediction_logits = output_analyzer.get_prediction_logits(0, target_position)
         prediction_probs = torch.softmax(prediction_logits, dim=0)
         same_prediction_prob = prediction_probs[target_id].item()
         candidate_ids = torch.topk(prediction_probs, k=self.candidate_count, dim=0).indices
