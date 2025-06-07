@@ -1,15 +1,15 @@
 import numpy as np
 from numpy.testing import assert_array_equal
 import torch
-from torch import Tensor
+from torch import Tensor, testing
 from unittest import TestCase
 from source.dropout_substituter import DropoutSubstituter
 from source.roberta_model import RobertaModel
 
 class DropoutSubstituterTest(TestCase):
     def setUp(self):
-        self.model = RobertaModel
-        self.substituter = DropoutSubstituter(self.model, 0.5, 3)
+        self.model = RobertaModel()
+        self.substituter = DropoutSubstituter(self.model, 0.3, 3)
 
     def test_applies_dropout(self):
         embedding = torch.ones(768)
@@ -22,3 +22,8 @@ class DropoutSubstituterTest(TestCase):
         encoding = np.array([1, 2, 3])
         alternative_encodings = self.substituter.find_alternative_encodings(encoding, 0, [100, 101])
         assert_array_equal(alternative_encodings, np.array([[100, 2, 3], [101, 2, 3]]))
+
+    def test_finds_prediction_logits(self):
+        output = self.model.get_output_from_encodings([[0, 20760, 2], [0, 232, 2]])
+        logits: Tensor = self.substituter.get_prediction_logits(output, 0, 1)
+        self.assertEqual((self.model.get_vocabulary_size(),), logits.shape)

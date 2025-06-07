@@ -5,7 +5,10 @@ from transformers import RobertaTokenizer, RobertaForMaskedLM
 class RobertaModel:
     def __init__(self):
         self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
-        self.model = RobertaForMaskedLM.from_pretrained('roberta-base', output_hidden_states=True)
+        self.model = RobertaForMaskedLM.from_pretrained('roberta-base',
+                                                        output_hidden_states=True,
+                                                        output_attentions=True,
+                                                        attn_implementation="eager")
 
     def get_output_from_encodings(self, encodings):
         with torch.no_grad():
