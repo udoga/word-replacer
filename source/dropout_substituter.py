@@ -9,12 +9,13 @@ class DropoutSubstituter:
         self.candidate_count = candidate_count
 
     def substitute(self, text, target):
-        input_ids = self.model.get_token_ids_from_text(text)
-        target_id = self.model.get_token_ids_from_text(target)[1]
+        input_ids = self.model.get_encoding_from_text(text)
+        target_id = self.model.get_encoding_from_text(target)[1]
         target_position = input_ids.index(target_id)
         input_embeddings = self.model.get_input_embeddings(input_ids)
         input_embeddings[target_position] = self.apply_dropout(input_embeddings[target_position], self.dropout_rate)
-        prediction_logits = self.model.get_prediction_logits(input_embeddings, target_position)
+        original_output = self.model.get_output_from_embeddings(input_embeddings)
+        prediction_logits = self.model.get_prediction_logits(original_output, 0, target_position)
         prediction_probs = torch.softmax(prediction_logits, dim=0)
         same_prediction_prob = prediction_probs[target_id].item()
         candidate_ids = torch.topk(prediction_probs, k=self.candidate_count, dim=0).indices
