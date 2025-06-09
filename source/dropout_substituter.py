@@ -26,7 +26,9 @@ class DropoutSubstituter:
         proposal_scores = self.get_proposal_scores(normalized_probs)
         alternative_encodings = self.find_alternative_encodings(input_ids, target_index, candidate_ids)
         alternatives_output = self.model.get_output_from_encodings(alternative_encodings)
-        validation_scores = self.get_validation_scores(original_output, alternatives_output, target_index)
+        similarity_matrix = self.get_similarity_matrix(original_output, alternatives_output)
+        average_attentions_to_target = self.get_average_attentions_to_target(original_output, target_index)
+        validation_scores = self.get_validation_scores(similarity_matrix, average_attentions_to_target)
         return pd.DataFrame(data=dict(
             candidate=candidates,
             candidate_prob=candidate_probs,
@@ -50,17 +52,16 @@ class DropoutSubstituter:
     def get_proposal_scores(self, normalized_probs) -> np.ndarray:
         return np.log(normalized_probs)
 
-    def get_validation_scores(self, original_output, alternatives_output, target_index):
+    def get_similarity_matrix(self, original_output, alternatives_output):
+        similarity_matrix = []
         cos_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
-        avg_attentions = torch.div(torch.stack(list(original_output.attentions)).squeeze().sum(0).sum(0), (12 * 12.0))
-        validation_scores = torch.zeros(alternatives_output.hidden_states[0].size(0))
         token_count = original_output.hidden_states[0].shape[1]
         for token_index in range(token_count):
             original_representation = self.get_contextualized_representations(original_output, token_index)
             alternative_representations = self.get_contextualized_representations(alternatives_output, token_index)
-            similarity_scores = cos_similarity(original_representation, alternative_representations)
-            validation_scores += avg_attentions[target_index][token_index] * similarity_scores
-        return validation_scores
+            alternative_similarities_for_token = cos_similarity(original_representation, alternative_representations)
+            similarity_matrix.append(alternative_similarities_for_token)
+        return torch.stack(similarity_matrix).t()
 
     def get_prediction_probs(self, output, text_index, target_index) -> Tensor:
         return torch.softmax(output.logits[text_index][target_index], dim=0)
@@ -78,3 +79,9 @@ class DropoutSubstituter:
             new_encoding[target_index] = token_id
             alternative_encodings.append(new_encoding)
         return np.array(alternative_encodings)
+
+    def get_average_attentions_to_target(self, output, target_index):
+        return torch.div(torch.stack(list(output.attentions)).squeeze().sum(0).sum(0), (12 * 12.0))[target_index]
+
+    def get_validation_scores(self, similarity_matrix, average_attentions_to_target):
+        return torch.matmul(similarity_matrix, average_attentions_to_target)
