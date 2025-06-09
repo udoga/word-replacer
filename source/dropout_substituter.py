@@ -27,13 +27,15 @@ class DropoutSubstituter:
         alternative_encodings = self.find_alternative_encodings(input_ids, target_index, candidate_ids)
         alternatives_output = self.model.get_output_from_encodings(alternative_encodings)
         similarity_matrix = self.get_similarity_matrix(original_output, alternatives_output)
-        average_attentions_to_target = self.get_average_attentions_to_target(original_output, target_index)
-        validation_scores = self.get_validation_scores(similarity_matrix, average_attentions_to_target)
+        target_similarities = similarity_matrix[:, target_index]
+        average_attention_matrix = self.get_average_attention_matrix(original_output)
+        validation_scores = torch.matmul(similarity_matrix, average_attention_matrix[target_index])
         return pd.DataFrame(data=dict(
             candidate=candidates,
             candidate_prob=candidate_probs,
             normalized_prob=normalized_probs,
             proposal_score=proposal_scores,
+            target_similarity=target_similarities,
             validation_score=validation_scores))
 
     def mask_target_embedding(self, embeddings, target_index, dropout_rate):
@@ -80,8 +82,5 @@ class DropoutSubstituter:
             alternative_encodings.append(new_encoding)
         return np.array(alternative_encodings)
 
-    def get_average_attentions_to_target(self, output, target_index):
-        return torch.div(torch.stack(list(output.attentions)).squeeze().sum(0).sum(0), (12 * 12.0))[target_index]
-
-    def get_validation_scores(self, similarity_matrix, average_attentions_to_target):
-        return torch.matmul(similarity_matrix, average_attentions_to_target)
+    def get_average_attention_matrix(self, output):
+        return torch.div(torch.stack(list(output.attentions)).squeeze().sum(0).sum(0), (12 * 12.0))
