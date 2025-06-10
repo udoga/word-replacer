@@ -13,7 +13,7 @@ class DropoutSubstituterTest(TestCase):
         cls.model = RobertaModel()
 
     def setUp(self):
-        self.substituter = DropoutSubstituter(self.model, 0.3, 3, 0.003)
+        self.substituter = DropoutSubstituter(self.model)
 
     def test_applies_dropout(self):
         embedding = torch.ones(768)

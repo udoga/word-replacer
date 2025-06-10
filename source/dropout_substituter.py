@@ -1,13 +1,13 @@
-import numpy as np
 import torch
-from torch import Tensor
+from torch import Tensor, Generator
 
 from substitution_table import SubstitutionTable
 
 class DropoutSubstituter:
-    def __init__(self, model, dropout_rate, candidate_count, alpha):
+    def __init__(self, model, dropout_rate = 0.3, dropout_seed = None, candidate_count = 10, alpha = 0.01):
         self.model = model
         self.dropout_rate = dropout_rate
+        self.dropout_generator = None if dropout_seed is None else Generator().manual_seed(dropout_seed)
         self.candidate_count = candidate_count
         self.alpha = alpha
 
@@ -43,7 +43,7 @@ class DropoutSubstituter:
     def apply_dropout(self, embedding: Tensor, dropout_rate):
         embedding_length = embedding.shape[0]
         dropout_count = round(dropout_rate * embedding_length)
-        dropout_indices = np.random.RandomState(42).choice(embedding_length, dropout_count, replace=False)
+        dropout_indices = torch.randperm(embedding_length, generator=self.dropout_generator)[:dropout_count]
         embedding[dropout_indices] = 0
 
     def get_alternative_tokens_similarities(self, original_output, alternatives_output) -> Tensor:
