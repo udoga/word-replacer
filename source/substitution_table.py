@@ -9,6 +9,7 @@ class SubstitutionTable:
         self.proposal_scores = None
         self.target_similarities = None
         self.validation_scores = None
+        self.final_scores = None
 
     def configure_display(self):
         torch.set_printoptions(linewidth=1000)
@@ -28,6 +29,7 @@ class SubstitutionTable:
             normalized_prob=self.normalized_probs,
             proposal_score=self.proposal_scores,
             target_similarity=self.target_similarities,
-            validation_score=self.validation_scores))
+            validation_score=self.validation_scores,
+            final_score=self.final_scores))
         df.loc["Total"] = df.sum(numeric_only=True)
         return df

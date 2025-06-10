@@ -5,10 +5,11 @@ from torch import Tensor
 from substitution_table import SubstitutionTable
 
 class DropoutSubstituter:
-    def __init__(self, model, dropout_rate, candidate_count):
+    def __init__(self, model, dropout_rate, candidate_count, alpha):
         self.model = model
         self.dropout_rate = dropout_rate
         self.candidate_count = candidate_count
+        self.alpha = alpha
 
     def substitute(self, text, target):
         t = SubstitutionTable()
@@ -31,20 +32,19 @@ class DropoutSubstituter:
         t.target_similarities = alternative_tokens_similarities[:, target_index]
         token_target_attentions = self.get_average_attention_matrix(clear_output)[target_index]
         t.validation_scores = torch.matmul(alternative_tokens_similarities, token_target_attentions)
+        t.final_scores = t.validation_scores + self.alpha * t.proposal_scores
         return t
 
     def mask_target_embedding(self, embeddings, target_index, dropout_rate):
-        embedding_copy = embeddings.clone()
-        embedding_copy[target_index] = self.apply_dropout(embedding_copy[target_index], dropout_rate)
-        return embedding_copy
+        embeddings_copy = embeddings.clone()
+        self.apply_dropout(embeddings_copy[target_index], dropout_rate)
+        return embeddings_copy
 
-    def apply_dropout(self, embedding: Tensor, dropout_rate) -> Tensor:
+    def apply_dropout(self, embedding: Tensor, dropout_rate):
         embedding_length = embedding.shape[0]
         dropout_count = round(dropout_rate * embedding_length)
         dropout_indices = np.random.RandomState(42).choice(embedding_length, dropout_count, replace=False)
-        embedding_copy = embedding.clone()
-        embedding_copy[dropout_indices] = 0
-        return embedding_copy
+        embedding[dropout_indices] = 0
 
     def get_alternative_tokens_similarities(self, original_output, alternatives_output) -> Tensor:
         similarity_matrix = []

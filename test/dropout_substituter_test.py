@@ -13,14 +13,13 @@ class DropoutSubstituterTest(TestCase):
         cls.model = RobertaModel()
 
     def setUp(self):
-        self.substituter = DropoutSubstituter(self.model, 0.3, 3)
+        self.substituter = DropoutSubstituter(self.model, 0.3, 3, 0.003)
 
     def test_applies_dropout(self):
         embedding = torch.ones(768)
-        result: Tensor = self.substituter.apply_dropout(embedding, 0.5)
-        self.assertEqual(result.shape, embedding.shape)
-        self.assertTrue(torch.any(result == 0))
-        self.assertTrue(torch.any(result == 1))
+        self.substituter.apply_dropout(embedding, 0.5)
+        self.assertTrue(torch.any(embedding == 0))
+        self.assertTrue(torch.any(embedding == 1))
 
     def test_finds_alternative_encodings(self):
         encoding = np.array([1, 2, 3])
