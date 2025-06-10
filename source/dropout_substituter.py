@@ -1,49 +1,58 @@
 import torch
-from torch import Tensor, Generator
+from torch import Tensor
 
 from substitution_table import SubstitutionTable
 
 class DropoutSubstituter:
-    def __init__(self, model, dropout_rate = 0.3, dropout_seed = None, candidate_count = 10, alpha = 0.01):
+    def __init__(self, model, dropout_rate = 0.3, candidate_count = 10, alpha = 0.01, iteration_count=1,
+                 deterministic=True):
         self.model = model
         self.dropout_rate = dropout_rate
-        self.dropout_generator = None if dropout_seed is None else Generator().manual_seed(dropout_seed)
         self.candidate_count = candidate_count
         self.alpha = alpha
+        self.iteration_count = iteration_count
+        self.deterministic = deterministic
 
-    def substitute(self, text, target):
+    def substitute(self, text, target) -> SubstitutionTable:
+        substitution_tables = []
+        for i in range(self.iteration_count):
+            substitution_tables.append(self.substitute_once(text, target, i))
+        return SubstitutionTable.avg_tables(substitution_tables, 'final_score', self.candidate_count)
+
+    def substitute_once(self, text, target, iteration_index) -> SubstitutionTable:
         t = SubstitutionTable()
         token_ids = self.model.get_encoding_from_text(text)
         target_id = self.model.get_encoding_from_text(target)[1]
         target_index = token_ids.index(target_id)
         clear_embeddings = self.model.get_input_embeddings(token_ids)
         clear_output = self.model.get_output_from_embeddings(clear_embeddings)
-        masked_embeddings = self.mask_target_embedding(clear_embeddings, target_index, self.dropout_rate)
+        masked_embeddings = self.mask_target(clear_embeddings, target_index, self.dropout_rate, iteration_index)
         masked_output = self.model.get_output_from_embeddings(masked_embeddings)
         prediction_probs = self.get_prediction_probs(masked_output, 0, target_index)
         candidate_ids = torch.topk(prediction_probs, k=self.candidate_count, dim=0).indices
-        t.candidate_tokens = self.model.get_tokens_from_ids(candidate_ids.tolist())
-        t.candidate_probs = prediction_probs[candidate_ids]
-        t.normalized_probs = self.get_normalized_probs(t.candidate_probs, prediction_probs[target_id].item())
-        t.proposal_scores = torch.log(t.normalized_probs)
+        t['candidate'] = self.model.get_tokens_from_ids(candidate_ids.tolist())
+        t['candidate_prob'] = prediction_probs[candidate_ids]
+        t['normalized_prob'] = self.get_normalized_probs(t['candidate_prob'], prediction_probs[target_id].item())
+        t['proposal_score'] = torch.log(t['normalized_prob'])
         alternative_encodings = self.find_alternative_encodings(token_ids, target_index, candidate_ids)
         alternative_output = self.model.get_output_from_encodings(alternative_encodings)
         alternative_tokens_similarities = self.get_alternative_tokens_similarities(clear_output, alternative_output)
-        t.target_similarities = alternative_tokens_similarities[:, target_index]
+        t['target_similarity'] = alternative_tokens_similarities[:, target_index]
         token_target_attentions = self.get_average_attention_matrix(clear_output)[target_index]
-        t.validation_scores = torch.matmul(alternative_tokens_similarities, token_target_attentions)
-        t.final_scores = t.validation_scores + self.alpha * t.proposal_scores
+        t['validation_score'] = torch.matmul(alternative_tokens_similarities, token_target_attentions)
+        t['final_score'] = t['validation_score'] + self.alpha * t['proposal_score']
         return t
 
-    def mask_target_embedding(self, embeddings, target_index, dropout_rate):
+    def mask_target(self, embeddings, target_index, dropout_rate, iteration_index):
         embeddings_copy = embeddings.clone()
-        self.apply_dropout(embeddings_copy[target_index], dropout_rate)
+        self.apply_dropout(embeddings_copy[target_index], dropout_rate, iteration_index)
         return embeddings_copy
 
-    def apply_dropout(self, embedding: Tensor, dropout_rate):
+    def apply_dropout(self, embedding: Tensor, dropout_rate, iteration_index):
         embedding_length = embedding.shape[0]
         dropout_count = round(dropout_rate * embedding_length)
-        dropout_indices = torch.randperm(embedding_length, generator=self.dropout_generator)[:dropout_count]
+        generator = torch.Generator().manual_seed(iteration_index) if self.deterministic else None
+        dropout_indices = torch.randperm(embedding_length, generator=generator)[:dropout_count]
         embedding[dropout_indices] = 0
 
     def get_alternative_tokens_similarities(self, original_output, alternatives_output) -> Tensor:

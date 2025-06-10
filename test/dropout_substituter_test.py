@@ -17,7 +17,7 @@ class DropoutSubstituterTest(TestCase):
 
     def test_applies_dropout(self):
         embedding = torch.ones(768)
-        self.substituter.apply_dropout(embedding, 0.5)
+        self.substituter.apply_dropout(embedding, 0.5, 0)
         self.assertTrue(torch.any(embedding == 0))
         self.assertTrue(torch.any(embedding == 1))
 
