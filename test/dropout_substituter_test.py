@@ -28,6 +28,6 @@ class DropoutSubstituterTest(TestCase):
         assert_array_equal(alternative_encodings, np.array([[100, 2, 3], [101, 2, 3]]))
 
     def test_finds_prediction_logits(self):
-        output = self.model.get_output_from_encodings([[0, 20760, 2], [0, 232, 2]])
+        output = self.model.get_output_from_encodings(torch.tensor([[0, 20760, 2], [0, 232, 2]]))
         probs: Tensor = self.substituter.get_prediction_probs(output, 0, 1)
         self.assertEqual((self.model.get_vocabulary_size(),), probs.shape)

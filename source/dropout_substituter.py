@@ -22,9 +22,9 @@ class DropoutSubstituter:
         prediction_probs = self.get_prediction_probs(masked_output, 0, target_index)
         candidate_ids = torch.topk(prediction_probs, k=self.candidate_count, dim=0).indices
         t.candidate_tokens = self.model.get_tokens_from_ids(candidate_ids.tolist())
-        t.candidate_probs = prediction_probs[candidate_ids].tolist()
+        t.candidate_probs = prediction_probs[candidate_ids]
         t.normalized_probs = self.get_normalized_probs(t.candidate_probs, prediction_probs[target_id].item())
-        t.proposal_scores = self.get_proposal_scores(t.normalized_probs)
+        t.proposal_scores = torch.log(t.normalized_probs)
         alternative_encodings = self.find_alternative_encodings(token_ids, target_index, candidate_ids)
         alternative_output = self.model.get_output_from_encodings(alternative_encodings)
         alternative_tokens_similarities = self.get_alternative_tokens_similarities(clear_output, alternative_output)
@@ -46,10 +46,7 @@ class DropoutSubstituter:
         embedding_copy[dropout_indices] = 0
         return embedding_copy
 
-    def get_proposal_scores(self, normalized_probs) -> np.ndarray:
-        return np.log(normalized_probs)
-
-    def get_alternative_tokens_similarities(self, original_output, alternatives_output):
+    def get_alternative_tokens_similarities(self, original_output, alternatives_output) -> Tensor:
         similarity_matrix = []
         cos_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
         token_count = original_output.hidden_states[0].shape[1]
@@ -66,16 +63,16 @@ class DropoutSubstituter:
     def get_contextualized_representations(self, output, token_index) -> Tensor:
         return torch.cat(tuple([output.hidden_states[i][:, token_index, :] for i in [-4, -3, -2, -1]]), dim=1)
 
-    def get_normalized_probs(self, prediction_probs, original_prediction_prob) -> np.ndarray:
-        return np.array(prediction_probs) / (1.0 - original_prediction_prob)
+    def get_normalized_probs(self, candidate_probs: Tensor, original_prediction_prob) -> Tensor:
+        return torch.div(candidate_probs, (1.0 - original_prediction_prob))
 
-    def find_alternative_encodings(self, encoding: np.ndarray, target_index, token_ids) -> np.ndarray:
+    def find_alternative_encodings(self, encoding, target_index, token_ids) -> Tensor:
         alternative_encodings = []
         for token_id in token_ids:
             new_encoding = encoding.copy()
             new_encoding[target_index] = token_id
             alternative_encodings.append(new_encoding)
-        return np.array(alternative_encodings)
+        return torch.tensor(alternative_encodings)
 
-    def get_average_attention_matrix(self, output):
+    def get_average_attention_matrix(self, output) -> Tensor:
         return torch.div(torch.stack(list(output.attentions)).squeeze().sum(0).sum(0), (12 * 12.0))

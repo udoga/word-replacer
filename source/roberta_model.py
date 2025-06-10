@@ -12,7 +12,7 @@ class RobertaModel:
 
     def get_output_from_encodings(self, encodings):
         with torch.no_grad():
-            return self.model(torch.tensor(encodings))
+            return self.model(encodings)
 
     def get_output_from_embeddings(self, embeddings):
         with torch.no_grad():
