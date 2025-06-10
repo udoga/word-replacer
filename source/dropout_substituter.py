@@ -1,7 +1,8 @@
 import numpy as np
-import pandas as pd
 import torch
 from torch import Tensor
+
+from substitution_table import SubstitutionTable
 
 class DropoutSubstituter:
     def __init__(self, model, dropout_rate, candidate_count):
@@ -10,6 +11,7 @@ class DropoutSubstituter:
         self.candidate_count = candidate_count
 
     def substitute(self, text, target):
+        t = SubstitutionTable()
         token_ids = self.model.get_encoding_from_text(text)
         target_id = self.model.get_encoding_from_text(target)[1]
         target_index = token_ids.index(target_id)
@@ -19,23 +21,17 @@ class DropoutSubstituter:
         masked_output = self.model.get_output_from_embeddings(masked_embeddings)
         prediction_probs = self.get_prediction_probs(masked_output, 0, target_index)
         candidate_ids = torch.topk(prediction_probs, k=self.candidate_count, dim=0).indices
-        candidate_tokens = self.model.get_tokens_from_ids(candidate_ids.tolist())
-        candidate_probs = prediction_probs[candidate_ids].tolist()
-        candidate_normalized_probs = self.get_normalized_probs(candidate_probs, prediction_probs[target_id].item())
-        candidate_proposal_scores = self.get_proposal_scores(candidate_normalized_probs)
+        t.candidate_tokens = self.model.get_tokens_from_ids(candidate_ids.tolist())
+        t.candidate_probs = prediction_probs[candidate_ids].tolist()
+        t.normalized_probs = self.get_normalized_probs(t.candidate_probs, prediction_probs[target_id].item())
+        t.proposal_scores = self.get_proposal_scores(t.normalized_probs)
         alternative_encodings = self.find_alternative_encodings(token_ids, target_index, candidate_ids)
         alternative_output = self.model.get_output_from_encodings(alternative_encodings)
         alternative_tokens_similarities = self.get_alternative_tokens_similarities(clear_output, alternative_output)
-        alternative_target_similarities = alternative_tokens_similarities[:, target_index]
+        t.target_similarities = alternative_tokens_similarities[:, target_index]
         token_target_attentions = self.get_average_attention_matrix(clear_output)[target_index]
-        alternative_validation_scores = torch.matmul(alternative_tokens_similarities, token_target_attentions)
-        return pd.DataFrame(data=dict(
-            candidate_token=candidate_tokens,
-            candidate_prob=candidate_probs,
-            normalized_prob=candidate_normalized_probs,
-            proposal_score=candidate_proposal_scores,
-            target_similarity=alternative_target_similarities,
-            validation_score=alternative_validation_scores))
+        t.validation_scores = torch.matmul(alternative_tokens_similarities, token_target_attentions)
+        return t
 
     def mask_target_embedding(self, embeddings, target_index, dropout_rate):
         embedding_copy = embeddings.clone()

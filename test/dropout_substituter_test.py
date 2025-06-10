@@ -7,8 +7,12 @@ from source.dropout_substituter import DropoutSubstituter
 from source.roberta_model import RobertaModel
 
 class DropoutSubstituterTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.model = RobertaModel()
+
     def setUp(self):
-        self.model = RobertaModel()
         self.substituter = DropoutSubstituter(self.model, 0.3, 3)
 
     def test_applies_dropout(self):
