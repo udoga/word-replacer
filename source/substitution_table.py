@@ -20,9 +20,9 @@ class SubstitutionTable:
 
     def print_report(self):
         self.configure_display()
-        print(self.create_frame())
+        print(self.to_frame())
 
-    def create_frame(self):
+    def to_frame(self):
         df = pd.DataFrame(data=dict(
             candidate_token=self.candidate_tokens,
             candidate_prob=self.candidate_probs,
@@ -31,5 +31,18 @@ class SubstitutionTable:
             target_similarity=self.target_similarities,
             validation_score=self.validation_scores,
             final_score=self.final_scores))
-        df.loc["Total"] = df.sum(numeric_only=True)
+        df = df.set_index('candidate_token')
+        df.loc["Total:"] = df.sum(numeric_only=True)
         return df
+
+    @staticmethod
+    def avg_tables(substitution_tables):
+        return SubstitutionTable.avg_frames_by_token([table.to_frame() for table in substitution_tables])
+
+    @staticmethod
+    def sum_frames_by_token(frames):
+        return pd.concat([df.reset_index() for df in frames]).groupby(frames[0].index.name).sum()
+
+    @staticmethod
+    def avg_frames_by_token(frames):
+        return SubstitutionTable.sum_frames_by_token(frames).apply(lambda x: x / len(frames))
