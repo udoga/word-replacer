@@ -1,5 +1,5 @@
-from dropout_substituter import DropoutSubstituter
-from roberta_model import RobertaModel
+from source.dropout_substituter import DropoutSubstituter
+from source.roberta_model import RobertaModel
 
 model = RobertaModel()
 substituter = DropoutSubstituter(model, dropout_rate=0.5, candidate_count=50, alpha=0.03, iteration_count=5, deterministic=True)

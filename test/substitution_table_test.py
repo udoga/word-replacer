@@ -1,8 +1,7 @@
 import pandas as pd
 import pandas.testing as pd_testing
 from unittest import TestCase
-
-from substitution_table import SubstitutionTable
+from source.substitution_table import SubstitutionTable
 
 class SubstitutionTableTest(TestCase):
     def setUp(self):

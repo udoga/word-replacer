@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 
-from substitution_table import SubstitutionTable
+from .substitution_table import SubstitutionTable
 
 class DropoutSubstituter:
     def __init__(self, model, dropout_rate = 0.3, candidate_count = 10, alpha = 0.01, iteration_count=1,
@@ -80,8 +80,8 @@ class DropoutSubstituter:
         for token_id in token_ids:
             new_encoding = encoding.copy()
             new_encoding[target_index] = token_id
-            alternative_encodings.append(new_encoding)
-        return torch.tensor(alternative_encodings)
+            alternative_encodings.append(torch.tensor(new_encoding, dtype=torch.long))
+        return torch.stack(alternative_encodings)
 
     def get_average_attention_matrix(self, output) -> Tensor:
         return torch.div(torch.stack(list(output.attentions)).squeeze().sum(0).sum(0), (12 * 12.0))

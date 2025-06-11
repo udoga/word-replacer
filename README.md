@@ -6,6 +6,7 @@ python3 -m venv .venv
 source .venv/bin/activate # .venv\Scripts\activate for Windows
 pip install -r requirements.txt
 pytest
+python main.py
 ```
 
 ## Studies
