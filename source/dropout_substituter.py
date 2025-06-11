@@ -38,8 +38,9 @@ class DropoutSubstituter:
         alternative_output = self.model.get_output_from_encodings(alternative_encodings)
         alternative_tokens_similarities = self.get_alternative_tokens_similarities(clear_output, alternative_output)
         t['target_similarity'] = alternative_tokens_similarities[:, target_index]
-        token_target_attentions = self.get_average_attention_matrix(clear_output)[target_index]
-        t['validation_score'] = torch.matmul(alternative_tokens_similarities, token_target_attentions)
+        token_target_attentions = self.get_average_attention_matrix(clear_output)[:, target_index]
+        token_target_weights = token_target_attentions / token_target_attentions.sum()
+        t['validation_score'] = torch.matmul(alternative_tokens_similarities, token_target_weights)
         t['final_score'] = t['validation_score'] + self.alpha * t['proposal_score']
         return t
 
@@ -84,4 +85,4 @@ class DropoutSubstituter:
         return torch.stack(alternative_encodings)
 
     def get_average_attention_matrix(self, output) -> Tensor:
-        return torch.div(torch.stack(list(output.attentions)).squeeze().sum(0).sum(0), (12 * 12.0))
+        return torch.stack(output.attentions).squeeze(1).mean(0).mean(0)
