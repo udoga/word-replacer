@@ -1,11 +1,11 @@
 import torch
 from torch import Tensor
-
 from .substitution_table import SubstitutionTable
 
 class DropoutSubstituter:
-    def __init__(self, model, dropout_rate = 0.3, candidate_count = 10, alpha = 0.01, iteration_count=1,
+    def __init__(self, tokenizer, model, dropout_rate = 0.3, candidate_count = 10, alpha = 0.01, iteration_count=1,
                  deterministic=True):
+        self.tokenizer = tokenizer
         self.model = model
         self.dropout_rate = dropout_rate
         self.candidate_count = candidate_count
@@ -21,21 +21,21 @@ class DropoutSubstituter:
 
     def substitute_once(self, text, target, iteration_index) -> SubstitutionTable:
         t = SubstitutionTable()
-        token_ids = self.model.get_encoding_from_text(text)
-        target_id = self.model.get_encoding_from_text(target)[1]
+        token_ids = self.get_encoding_from_text(text)
+        target_id = self.get_encoding_from_text(target)[1]
         target_index = token_ids.index(target_id)
-        clear_embeddings = self.model.get_input_embeddings(token_ids)
-        clear_output = self.model.get_output_from_embeddings(clear_embeddings)
+        clear_embeddings = self.get_input_embeddings(token_ids)
+        clear_output = self.get_output_from_embeddings(clear_embeddings)
         masked_embeddings = self.mask_target(clear_embeddings, target_index, self.dropout_rate, iteration_index)
-        masked_output = self.model.get_output_from_embeddings(masked_embeddings)
+        masked_output = self.get_output_from_embeddings(masked_embeddings)
         prediction_probs = self.get_prediction_probs(masked_output, 0, target_index)
         candidate_ids = torch.topk(prediction_probs, k=self.candidate_count, dim=0).indices
-        t['candidate'] = self.model.get_tokens_from_ids(candidate_ids.tolist())
+        t['candidate'] = self.get_tokens_from_ids(candidate_ids.tolist())
         t['candidate_prob'] = prediction_probs[candidate_ids]
         t['normalized_prob'] = self.get_normalized_probs(t['candidate_prob'], prediction_probs[target_id].item())
         t['proposal_score'] = torch.log(t['normalized_prob'])
         alternative_encodings = self.find_alternative_encodings(token_ids, target_index, candidate_ids)
-        alternative_output = self.model.get_output_from_encodings(alternative_encodings)
+        alternative_output = self.get_output_from_encodings(alternative_encodings)
         alternative_tokens_similarities = self.get_alternative_tokens_similarities(clear_output, alternative_output)
         t['target_similarity'] = alternative_tokens_similarities[:, target_index]
         token_target_attentions = self.get_average_attention_matrix(clear_output)[:, target_index]
@@ -43,6 +43,30 @@ class DropoutSubstituter:
         t['validation_score'] = torch.matmul(alternative_tokens_similarities, token_target_weights)
         t['final_score'] = t['validation_score'] + self.alpha * t['proposal_score']
         return t
+
+    def get_output_from_encodings(self, encodings):
+        with torch.no_grad():
+            return self.model(encodings)
+
+    def get_output_from_embeddings(self, embeddings):
+        with torch.no_grad():
+            return self.model(inputs_embeds=embeddings.unsqueeze(0))
+
+    def get_vocabulary_size(self):
+        return len(self.tokenizer)
+
+    def get_encoding_from_text(self, text):
+        return self.tokenizer.encode(" " + text)
+
+    def get_tokens_from_ids(self, token_ids):
+        return [c.strip() for c in self.tokenizer.batch_decode(token_ids)]
+
+    def get_input_embeddings(self, encoding) -> Tensor:
+        return self.get_batch_input_embeddings([encoding])[0]
+
+    def get_batch_input_embeddings(self, encodings) -> Tensor:
+        with torch.no_grad():
+            return self.model.get_input_embeddings()(torch.tensor(encodings))
 
     def mask_target(self, embeddings, target_index, dropout_rate, iteration_index):
         embeddings_copy = embeddings.clone()

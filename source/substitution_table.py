@@ -1,5 +1,4 @@
 import pandas as pd
-import torch
 
 class SubstitutionTable(dict):
     def __init__(self, *args, **kwargs):
