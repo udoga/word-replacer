@@ -5,6 +5,7 @@
 python3 -m venv .venv
 source .venv/bin/activate # .venv\Scripts\activate for Windows
 pip install -r requirements.txt
+./download.sh # downlaods dataset
 pytest
 python main.py
 ```
@@ -13,6 +14,7 @@ python main.py
 | Year | Paper                                                                                                                                                                          | Repository                                                               |
 |------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
 | 2014 | [What Substitutes Tell Us – Analysis of an “All-Words” Lexical Substitution Corpus](https://aclanthology.org/E14-1057.pdf)                                                     | -                                                                        |
+| 2015 | [A Simple Word Embedding Model for Lexical Substitution](https://aclanthology.org/W15-1501.pdf)                                                                                | [lexsub](https://github.com/orenmel/lexsub)                              |
 | 2016 | [PIC a Different Word: A Simple Model for Lexical Substitution in Context](https://aclanthology.org/N16-1131.pdf)                                                              | [naac2016](https://github.com/stephenroller/naacl2016)                   |
 | 2016 | [A Minimally Supervised Approach for Synonym Extraction with Word Embeddings](http://archive.sciendo.com/PRALIN/pralin.2016.105.issue-1/pralin-2016-0006/pralin-2016-0006.pdf) |                                                                          |
 | 2018 | [Simplification Using Paraphrases and Context-based Lexical Substitution](https://aclanthology.org/N18-1019.pdf)                                                               | [lexsub_addcos](https://github.com/acocos/lexsub_addcos)                 |

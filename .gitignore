@@ -1,4 +1,5 @@
 docs
+dataset
 .venv
 .idea
 __pycache__
