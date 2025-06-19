@@ -1,7 +1,7 @@
 from unittest import TestCase
 import pandas as pd
 
-from .mock_substituter import MockSubstituter
+from source.mock_substituter import MockSubstituter
 from source.benchmark_reporter import BenchmarkReporter
 
 class BenchmarkReporterTest(TestCase):

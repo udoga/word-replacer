@@ -3,7 +3,7 @@ class MockSubstituter:
         self.responses = []
         self.next_index = 0
 
-    def get_predictions(self, text, target, position):
+    def get_predictions(self, text, target, target_index):
         if self.next_index >= len(self.responses): return []
         response = self.responses[self.next_index]
         self.next_index += 1

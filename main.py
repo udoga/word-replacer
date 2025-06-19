@@ -7,5 +7,5 @@ model = RobertaForMaskedLM.from_pretrained('roberta-base', output_hidden_states=
 substituter = DropoutSubstituter(tokenizer, model, dropout_rate=0.3, candidate_count=50, alpha=0.01, iteration_count=1, deterministic=True)
 text = "The wine he sent to me as my birthday gift is too powerful to drink"
 target = "powerful"
-table = substituter.substitute(text, target)
+table = substituter.substitute(text, target, 12)
 table.print_report()

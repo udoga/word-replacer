@@ -13,17 +13,18 @@ class DropoutSubstituter:
         self.iteration_count = iteration_count
         self.deterministic = deterministic
 
-    def substitute(self, text, target) -> SubstitutionTable:
+    def substitute(self, text, target, target_index) -> SubstitutionTable:
         substitution_tables = []
         for i in range(self.iteration_count):
-            substitution_tables.append(self.substitute_once(text, target, i))
+            substitution_tables.append(self.substitute_once(text, target, target_index, i))
         return SubstitutionTable.avg_tables(substitution_tables, 'final_score', self.candidate_count)
 
-    def substitute_once(self, text, target, iteration_index) -> SubstitutionTable:
+    def substitute_once(self, text, target, target_index, iteration_index) -> SubstitutionTable:
         t = SubstitutionTable()
         token_ids = self.get_encoding_from_text(text)
         target_id = self.get_encoding_from_text(target)[1]
-        target_index = token_ids.index(target_id)
+        target_index += 1
+        assert target == self.get_tokens_from_ids([token_ids[target_index]])[0]
         clear_embeddings = self.get_input_embeddings(token_ids)
         clear_output = self.get_output_from_embeddings(clear_embeddings)
         masked_embeddings = self.mask_target(clear_embeddings, target_index, self.dropout_rate, iteration_index)
