@@ -45,6 +45,12 @@ class DropoutSubstituter:
         t['final_score'] = t['validation_score'] + self.alpha * t['proposal_score']
         return t
 
+    def get_predictions(self, text, target, target_index):
+        substitution_table = self.substitute(text, target, target_index)
+        candidates = substitution_table['candidate']
+        candidates.remove(target)
+        return candidates[:10]
+
     def get_output_from_encodings(self, encodings):
         with torch.no_grad():
             return self.model(encodings)

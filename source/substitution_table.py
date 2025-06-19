@@ -13,18 +13,10 @@ class SubstitutionTable(dict):
         df = df.set_index('candidate')
         return df
 
-    def print_report(self):
-        self.configure_display()
+    def __str__(self):
         frame = self.to_frame()
         frame.loc["Total"] = frame.sum(numeric_only=True)
-        print(frame)
-
-    @staticmethod
-    def configure_display():
-        pd.set_option('display.float_format', lambda x: '%.6f' % x)
-        pd.set_option('display.max_columns', None)
-        pd.set_option('display.width', None)
-        pd.set_option('display.max_rows', 500)
+        return frame.to_string()
 
     @staticmethod
     def avg_tables(substitution_tables, order_by, size):

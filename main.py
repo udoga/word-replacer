@@ -8,4 +8,4 @@ substituter = DropoutSubstituter(tokenizer, model, dropout_rate=0.3, candidate_c
 text = "The wine he sent to me as my birthday gift is too powerful to drink"
 target = "powerful"
 table = substituter.substitute(text, target, 12)
-table.print_report()
+print(table)
