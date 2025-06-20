@@ -38,32 +38,40 @@ class BenchmarkReporterTest(TestCase):
         df = self.reporter.get_frame()
         self.assertEqual(1, len(df))
 
+    def test_loads_predictions(self):
+        self.reporter.load_dataset("lst_trial", 3)
+        self.substituter.load_responses([["intelligent"], ["luminous"], ["brilliant"]])
+        self.reporter.load_predictions(self.substituter)
+        predictions_column = self.reporter.get_frame()["predictions"].to_list()
+        empty_predictions = ["" for _ in range(9)]
+        self.assertEqual(["intelligent"] + empty_predictions, predictions_column[0])
+        self.assertEqual(["luminous"] + empty_predictions, predictions_column[1])
+        self.assertEqual(["brilliant"] + empty_predictions, predictions_column[2])
+
     def test_calculates_best_scores(self):
         self.reporter.load_dataset("lst_trial", 3)
         self.substituter.load_responses([["intelligent"], ["luminous"], ["brilliant"]])
-        self.reporter.load_scores(self.substituter)
+        self.reporter.load_predictions(self.substituter)
+        self.reporter.load_scores()
         self.assertEqual([3/7, 2/5, 1/5], self.reporter.get_frame()["best_score"].to_list())
 
     def test_calculates_best_mode_scores(self):
         self.reporter.load_dataset("lst_trial", 3)
         self.substituter.load_responses([["clever"], ["luminous"], ["brilliant"]])
-        self.reporter.load_scores(self.substituter)
+        self.reporter.load_predictions(self.substituter)
+        self.reporter.load_scores()
         self.assertEqual([1, 0], self.reporter.get_frame()["best_mode_score"].to_list()[1:])
 
     def test_calculates_oot_scores(self):
         self.reporter.load_dataset("lst_trial", 3)
         self.substituter.load_responses([["x", "smart"], ["x", "x"], ["gleam", "colourful"]])
-        self.reporter.load_scores(self.substituter)
+        self.reporter.load_predictions(self.substituter)
+        self.reporter.load_scores()
         self.assertEqual([1/7, 0, 1/5 + 2/5], self.reporter.get_frame()["oot_score"].to_list())
 
     def test_calculates_oot_mode_scores(self):
         self.reporter.load_dataset("lst_trial", 3)
         self.substituter.load_responses([["x", "clever"], ["x", "luminous"], ["gleam", "x"]])
-        self.reporter.load_scores(self.substituter)
+        self.reporter.load_predictions(self.substituter)
+        self.reporter.load_scores()
         self.assertEqual([1, 0], self.reporter.get_frame()["oot_mode_score"].to_list()[1:])
-
-    def test_gives_error_when_prediction_count_is_not_ten(self):
-        self.reporter.load_dataset("lst_trial", 1)
-        self.substituter.load_responses([["clever"]])
-        self.substituter.responses[0].pop()
-        self.assertRaises(AssertionError, self.reporter.load_scores, self.substituter)

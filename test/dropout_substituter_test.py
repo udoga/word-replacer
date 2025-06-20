@@ -4,32 +4,35 @@ import torch
 from torch import Tensor
 from unittest import TestCase
 from transformers import RobertaTokenizer, RobertaForMaskedLM
+
+from source.lemmatizer import Lemmatizer
 from source.dropout_substituter import DropoutSubstituter
 
 class DropoutSubstituterTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+        cls.tokenizer = RobertaTokenizer.from_pretrained('roberta-base', add_prefix_space=True)
         cls.model = RobertaForMaskedLM.from_pretrained('roberta-base',
                                                         output_hidden_states=True,
                                                         output_attentions=True,
                                                         attn_implementation="eager")
 
     def setUp(self):
-        self.substituter = DropoutSubstituter(self.tokenizer, self.model)
+        self.substituter = DropoutSubstituter(self.tokenizer, self.model, Lemmatizer())
 
     def test_gets_token_ids_from_text(self):
-        self.assertEqual([0, 42891, 2], self.substituter.get_encoding_from_text("hello"))
-        self.assertEqual([0, 42891, 232, 2], self.substituter.get_encoding_from_text("hello world"))
+        self.assertEqual([0, 20760, 2], self.substituter.get_token_ids_from_text("hello"))
+        self.assertEqual([0, 20760, 232, 2], self.substituter.get_token_ids_from_text("hello world"))
+        self.assertEqual("finally", self.substituter.get_tokens_from_text("finally")[1])
 
     def test_gets_tokens_from_ids(self):
-        self.assertEqual(["hello"], self.substituter.get_tokens_from_ids([42891]))
-        self.assertEqual(["hello", "world"], self.substituter.get_tokens_from_ids([42891, 232]))
+        self.assertEqual(["hello"], self.substituter.get_tokens_from_ids([20760]))
+        self.assertEqual(["hello", "world"], self.substituter.get_tokens_from_ids([20760, 232]))
 
     def test_gets_input_embeddings_from_encoding(self):
-        embeddings: Tensor = self.substituter.get_input_embeddings([0, 42891, 2])
-        batch_embeddings: Tensor = self.substituter.get_batch_input_embeddings([[0, 42891, 2], [0, 232, 2]])
+        embeddings: Tensor = self.substituter.get_input_embeddings([0, 20760, 2])
+        batch_embeddings: Tensor = self.substituter.get_batch_input_embeddings([[0, 20760, 2], [0, 232, 2]])
         self.assertEqual((3, 768), embeddings.shape)
         self.assertEqual((2, 3, 768), batch_embeddings.shape)
 

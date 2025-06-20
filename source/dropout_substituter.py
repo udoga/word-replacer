@@ -1,13 +1,13 @@
 import torch
 from torch import Tensor
-from nltk.stem import PorterStemmer
 from .substitution_table import SubstitutionTable
 
 class DropoutSubstituter:
-    def __init__(self, tokenizer, model, dropout_rate = 0.3, candidate_count = 10, alpha = 0.01, iteration_count=1,
-                 deterministic=True):
+    def __init__(self, tokenizer, model, lemmatizer,
+                 dropout_rate = 0.3, candidate_count = 10, alpha = 0.01, iteration_count=1, deterministic=True):
         self.tokenizer = tokenizer
         self.model = model
+        self.lemmatizer = lemmatizer
         self.dropout_rate = dropout_rate
         self.candidate_count = candidate_count
         self.alpha = alpha
@@ -22,11 +22,12 @@ class DropoutSubstituter:
 
     def substitute_once(self, text, target, position, iteration_index) -> SubstitutionTable:
         t = SubstitutionTable()
-        token_ids = self.get_encoding_from_text(text)
+        token_ids = self.get_token_ids_from_text(text)
+        tokens = self.get_tokens_from_ids(token_ids)
         target_index = self.find_token_index(text, position)
-        target_in_text = self.get_tokens_from_ids([token_ids[target_index]])[0]
-        assert self.has_same_root(target, target_in_text), f"Target mismatch: given={target} found={target_in_text}"
         target_id = token_ids[target_index]
+        target_token = tokens[target_index]
+        assert self.lemmatizer.has_same_root(target, target_token), f"Target {target} != {target_token} in {tokens}"
         clear_embeddings = self.get_input_embeddings(token_ids)
         clear_output = self.get_output_from_embeddings(clear_embeddings)
         masked_embeddings = self.mask_target(clear_embeddings, target_index, self.dropout_rate, iteration_index)
@@ -50,8 +51,8 @@ class DropoutSubstituter:
     def get_predictions(self, text, target, position):
         substitution_table = self.substitute(text, target, position)
         candidates = substitution_table['candidate']
-        candidates.remove(target)
-        return candidates[:10]
+        if target in candidates: candidates.remove(target)
+        return candidates
 
     def get_output_from_encodings(self, encodings):
         with torch.no_grad():
@@ -70,14 +71,14 @@ class DropoutSubstituter:
         encoding_until_position = self.tokenizer.encode(test_until_position)
         return len(encoding_until_position) - 1
 
-    def get_encoding_from_text(self, text):
+    def get_tokens_from_text(self, text):
+        return self.get_tokens_from_ids(self.get_token_ids_from_text(text))
+
+    def get_token_ids_from_text(self, text):
         return self.tokenizer.encode(text)
 
     def get_tokens_from_ids(self, token_ids):
         return [c.strip() for c in self.tokenizer.batch_decode(token_ids)]
-
-    def has_same_root(self, a, b):
-        return PorterStemmer().stem(a.lower()) == PorterStemmer().stem(b.lower())
 
     def get_input_embeddings(self, encoding) -> Tensor:
         return self.get_batch_input_embeddings([encoding])[0]
