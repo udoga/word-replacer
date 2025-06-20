@@ -28,6 +28,7 @@ class BenchmarkReporter:
                 idx = int(left.split()[-1])
                 substitutes = {" ".join(c.split()[:-1]): int(c.split()[-1]) for c in right.split(";") if c.strip()}
                 self.frame.at[idx, "substitutes"] = substitutes
+                self.frame.at[idx, "tie"] = len(self.get_top_substitutes(substitutes)) > 1
 
     def load_predictions(self, substituter):
         self.frame["predictions"] = self.frame.apply(
@@ -37,12 +38,11 @@ class BenchmarkReporter:
         self.frame[["best_score", "best_mode_score", "oot_score", "oot_mode_score"]] = 0.0
         for r in self.frame.itertuples():
             best_prediction = r.predictions[0]
-            modes = [sub for sub, count in r.substitutes.items() if count == max(r.substitutes.values())]
-            tie = len(modes) != 1
-            self.frame.at[r.Index, "best_score"] = self.score_prediction(best_prediction, r.substitutes)
-            self.frame.at[r.Index, "best_mode_score"] = None if tie else int(best_prediction in modes)
-            self.frame.at[r.Index, "oot_score"] = sum([self.score_prediction(p, r.substitutes) for p in r.predictions])
-            self.frame.at[r.Index, "oot_mode_score"] = None if tie else int(any(p in modes for p in r.predictions))
+            top_substitutes = self.get_top_substitutes(r.substitutes)
+            self.frame.at[r.Index, "best_score"] = self.get_vote_weight(best_prediction, r.substitutes)
+            self.frame.at[r.Index, "best_mode_score"] = int(best_prediction in top_substitutes)
+            self.frame.at[r.Index, "oot_score"] = sum([self.get_vote_weight(p, r.substitutes) for p in r.predictions])
+            self.frame.at[r.Index, "oot_mode_score"] = int(any(p in top_substitutes for p in r.predictions))
 
     def get_ten_predictions(self, substituter, text, target, position):
         predictions = []
@@ -52,5 +52,8 @@ class BenchmarkReporter:
             print(f"Could not get predictions: text='{text}' target='{target}' position='{position}'' error={e}")
         return (predictions + ["" for _ in range(max(0, 10 - len(predictions)))])[:10]
 
-    def score_prediction(self, prediction, substitute_map):
+    def get_vote_weight(self, prediction, substitute_map):
         return substitute_map.get(prediction, 0) / sum(substitute_map.values())
+
+    def get_top_substitutes(self, substitute_map):
+        return [s for s, count in substitute_map.items() if count == max(substitute_map.values())]

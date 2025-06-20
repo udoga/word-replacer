@@ -61,7 +61,7 @@ class BenchmarkReporterTest(TestCase):
         self.substituter.load_responses([["clever"], ["luminous"], ["brilliant"]])
         self.reporter.load_predictions(self.substituter)
         self.reporter.load_scores()
-        self.assertEqual([1, 0], self.reporter.get_frame()["best_mode_score"].to_list()[1:])
+        self.assertEqual([1, 1, 0], self.reporter.get_frame()["best_mode_score"].to_list())
 
     def test_calculates_oot_scores(self):
         self.reporter.load_dataset("lst_trial", 3)
@@ -75,4 +75,8 @@ class BenchmarkReporterTest(TestCase):
         self.substituter.load_responses([["x", "clever"], ["x", "luminous"], ["gleam", "x"]])
         self.reporter.load_predictions(self.substituter)
         self.reporter.load_scores()
-        self.assertEqual([1, 0], self.reporter.get_frame()["oot_mode_score"].to_list()[1:])
+        self.assertEqual([1, 1, 0], self.reporter.get_frame()["oot_mode_score"].to_list())
+
+    def test_finds_if_there_is_tie_in_most_voted_substitutes(self):
+        self.reporter.load_dataset("lst_trial", 3)
+        self.assertEqual([True, False, False], self.reporter.get_frame()["tie"].to_list())

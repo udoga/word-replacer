@@ -27,7 +27,7 @@ class DropoutSubstituter:
         target_index = self.find_token_index(text, position)
         target_id = token_ids[target_index]
         target_token = tokens[target_index]
-        assert self.lemmatizer.has_same_root(target, target_token), f"Target {target} != {target_token} in {tokens}"
+        assert self.lemmatizer.has_same_root(target, target_token), f"Target {target} != {target_token} at {position}"
         clear_embeddings = self.get_input_embeddings(token_ids)
         clear_output = self.get_output_from_embeddings(clear_embeddings)
         masked_embeddings = self.mask_target(clear_embeddings, target_index, self.dropout_rate, iteration_index)
