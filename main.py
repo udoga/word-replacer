@@ -1,3 +1,4 @@
+from pathlib import Path
 from transformers import RobertaTokenizer, RobertaForMaskedLM
 from source.lemmatizer import Lemmatizer
 from source.dropout_substituter import DropoutSubstituter
@@ -17,7 +18,7 @@ def run_substituter():
 
 def run_benchmark():
     print("Running benchmark...")
-    benchmark_reporter = BenchmarkReporter("dataset/")
+    benchmark_reporter = BenchmarkReporter(Path(__file__).resolve().parents[0] / "dataset")
     benchmark_reporter.load_dataset("lst_test", 20)
     benchmark_reporter.load_predictions(substituter)
     benchmark_reporter.load_scores()

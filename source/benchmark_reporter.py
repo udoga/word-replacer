@@ -15,14 +15,14 @@ class BenchmarkReporter:
         if row_count: self.frame = self.frame.head(row_count)
 
     def load_sentences(self, file_name):
-        self.frame = pd.read_csv(self.dataset_folder + file_name, names=["target", "id", "position", "text"],
+        self.frame = pd.read_csv(str(self.dataset_folder / file_name), names=["target", "id", "position", "text"],
                                  sep="\t", header=None, encoding="iso-8859-1", engine="python", quoting=csv.QUOTE_NONE)
         self.frame = self.frame.set_index("id")
         self.frame[['target', 'type']] = (self.frame['target'].str.split('.', n=1, expand=True))
         self.frame['substitutes'] = [{} for _ in range(len(self.frame))]
 
     def load_substitutes(self, file_name):
-        with open(self.dataset_folder + file_name, 'r', encoding="iso-8859-1") as file:
+        with open(str(self.dataset_folder / file_name), 'r', encoding="iso-8859-1") as file:
             for line in file:
                 left, right = [p.strip() for p in line.strip().split("::")]
                 idx = int(left.split()[-1])

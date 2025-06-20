@@ -1,4 +1,5 @@
 from unittest import TestCase
+from pathlib import Path
 import pandas as pd
 
 from source.mock_substituter import MockSubstituter
@@ -7,7 +8,7 @@ from source.benchmark_reporter import BenchmarkReporter
 class BenchmarkReporterTest(TestCase):
     def setUp(self):
         self.substituter = MockSubstituter()
-        self.reporter = BenchmarkReporter("../dataset/")
+        self.reporter = BenchmarkReporter(Path(__file__).resolve().parents[1] / "dataset")
 
     def test_loads_sentences(self):
         self.reporter.load_sentences("lst_test.preprocessed")
