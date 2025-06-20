@@ -1,5 +1,6 @@
 import torch
 from torch import Tensor
+from nltk.stem import PorterStemmer
 from .substitution_table import SubstitutionTable
 
 class DropoutSubstituter:
@@ -13,18 +14,19 @@ class DropoutSubstituter:
         self.iteration_count = iteration_count
         self.deterministic = deterministic
 
-    def substitute(self, text, target, target_index) -> SubstitutionTable:
+    def substitute(self, text, target, position) -> SubstitutionTable:
         substitution_tables = []
         for i in range(self.iteration_count):
-            substitution_tables.append(self.substitute_once(text, target, target_index, i))
+            substitution_tables.append(self.substitute_once(text, target, position, i))
         return SubstitutionTable.avg_tables(substitution_tables, 'final_score', self.candidate_count)
 
-    def substitute_once(self, text, target, target_index, iteration_index) -> SubstitutionTable:
+    def substitute_once(self, text, target, position, iteration_index) -> SubstitutionTable:
         t = SubstitutionTable()
         token_ids = self.get_encoding_from_text(text)
-        target_id = self.get_encoding_from_text(target)[1]
-        target_index += 1
-        assert target == self.get_tokens_from_ids([token_ids[target_index]])[0]
+        target_index = self.find_token_index(text, position)
+        target_in_text = self.get_tokens_from_ids([token_ids[target_index]])[0]
+        assert self.has_same_root(target, target_in_text), f"Target mismatch: given={target} found={target_in_text}"
+        target_id = token_ids[target_index]
         clear_embeddings = self.get_input_embeddings(token_ids)
         clear_output = self.get_output_from_embeddings(clear_embeddings)
         masked_embeddings = self.mask_target(clear_embeddings, target_index, self.dropout_rate, iteration_index)
@@ -45,8 +47,8 @@ class DropoutSubstituter:
         t['final_score'] = t['validation_score'] + self.alpha * t['proposal_score']
         return t
 
-    def get_predictions(self, text, target, target_index):
-        substitution_table = self.substitute(text, target, target_index)
+    def get_predictions(self, text, target, position):
+        substitution_table = self.substitute(text, target, position)
         candidates = substitution_table['candidate']
         candidates.remove(target)
         return candidates[:10]
@@ -62,11 +64,20 @@ class DropoutSubstituter:
     def get_vocabulary_size(self):
         return len(self.tokenizer)
 
+    def find_token_index(self, text, position):
+        words = text.split()
+        test_until_position = " ".join(words[:position])
+        encoding_until_position = self.tokenizer.encode(test_until_position)
+        return len(encoding_until_position) - 1
+
     def get_encoding_from_text(self, text):
-        return self.tokenizer.encode(" " + text)
+        return self.tokenizer.encode(text)
 
     def get_tokens_from_ids(self, token_ids):
         return [c.strip() for c in self.tokenizer.batch_decode(token_ids)]
+
+    def has_same_root(self, a, b):
+        return PorterStemmer().stem(a.lower()) == PorterStemmer().stem(b.lower())
 
     def get_input_embeddings(self, encoding) -> Tensor:
         return self.get_batch_input_embeddings([encoding])[0]
