@@ -46,9 +46,9 @@ class DropoutSubstituterTest(TestCase):
         alternative_encodings = self.substituter.find_alternative_encodings(encoding, 0, [100, 101])
         assert_array_equal(alternative_encodings, np.array([[100, 2, 3], [101, 2, 3]]))
 
-    def test_finds_prediction_logits(self):
+    def test_find_probabilities_for_each_token_in_vocabulary(self):
         output = self.substituter.get_output_from_encodings(torch.tensor([[0, 42891, 2], [0, 232, 2]]))
-        probs: Tensor = self.substituter.get_prediction_probs(output, 0, 1)
+        probs: Tensor = self.substituter.get_vocab_probs(output, 0, 1)
         self.assertEqual((self.substituter.get_vocabulary_size(),), probs.shape)
 
     def test_finds_token_index(self):
