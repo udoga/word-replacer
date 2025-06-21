@@ -14,10 +14,10 @@ def run_substituter():
 
 def run_benchmark():
     reporter = BenchmarkReporter(Path(__file__).resolve().parents[0] / "dataset")
-    reporter.load_dataset("lst_test", 5)
+    reporter.load_dataset("lst_trial", 20)
     reporter.load_predictions(substituter)
     reporter.load_scores()
     print(reporter.get_frame().to_string(max_colwidth=30))
-    print(reporter.get_average_scores())
+    print("\nFinal scores:", reporter.get_average_scores())
 
 run_benchmark()

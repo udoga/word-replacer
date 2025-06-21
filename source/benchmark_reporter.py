@@ -32,7 +32,8 @@ class BenchmarkReporter:
 
     def load_predictions(self, substituter):
         self.frame["predictions"] = self.frame.apply(
-            lambda r: self.get_predictions(substituter, r["text"], r["target"], r["position"]), axis=1)
+            lambda r: self.get_predictions(r.name, substituter, r["text"], r["target"], r["position"]), axis=1)
+        print()
 
     def load_scores(self):
         self.frame[["best_score", "best_mode_score", "oot_score", "oot_mode_score"]] = 0.0
@@ -54,11 +55,12 @@ class BenchmarkReporter:
             "oot_mode_score": frame_non_tie["oot_mode_score"].mean().item()
         }
 
-    def get_predictions(self, substituter, text, target, position):
+    def get_predictions(self, text_id, substituter, text, target, position):
+        print(f"\rLoading predictions for instance id: {text_id:<5}", end='', flush=True)
         try:
             return substituter.get_predictions(text, target, position)[:10]
         except Exception as e:
-            print(f"Could not get predictions: text='{text}' target='{target}' position='{position}'' error={e}")
+            print(f"Error: {e}")
         return []
 
     def get_vote_weight(self, prediction, substitute_map):
