@@ -1,13 +1,15 @@
+import string
 import torch
 from torch import Tensor
+from nltk.stem import WordNetLemmatizer
 from .substitution_table import SubstitutionTable
 
 class DropoutSubstituter:
-    def __init__(self, tokenizer, model, lemmatizer,
+    def __init__(self, tokenizer, model,
                  dropout_rate = 0.3, candidate_count = 10, alpha = 0.01, iteration_count=1, deterministic=True):
         self.tokenizer = tokenizer
         self.model = model
-        self.lemmatizer = lemmatizer
+        self.lemmatizer = WordNetLemmatizer()
         self.dropout_rate = dropout_rate
         self.candidate_count = candidate_count
         self.alpha = alpha
@@ -27,7 +29,7 @@ class DropoutSubstituter:
         target_index = self.find_token_index(text, position)
         target_id = token_ids[target_index]
         target_token = tokens[target_index]
-        assert self.lemmatizer.has_same_root(target, target_token), f"Target {target} != {target_token} at {position}"
+        assert self.has_same_root(target, target_token), f"Target {target} != {target_token} at {position}"
         clear_embeddings = self.get_input_embeddings(token_ids)
         clear_output = self.get_output_from_embeddings(clear_embeddings)
         masked_embeddings = self.mask_target(clear_embeddings, target_index, self.dropout_rate, iteration_index)
@@ -49,10 +51,12 @@ class DropoutSubstituter:
         return t
 
     def get_predictions(self, text, target, position):
-        substitution_table = self.substitute(text, target, position)
-        candidates = substitution_table['candidate']
-        if target in candidates: candidates.remove(target)
-        return candidates
+        return self.filter_candidates(self.substitute(text, target, position)['candidate'], target)
+
+    def filter_candidates(self, candidates, target):
+        return [c.lower() for c in candidates
+                if not self.has_same_root(c, target)
+                and not any(p in c for p in string.punctuation)]
 
     def get_output_from_encodings(self, encodings):
         with torch.no_grad():
@@ -129,3 +133,9 @@ class DropoutSubstituter:
 
     def get_average_attention_matrix(self, output) -> Tensor:
         return torch.stack(output.attentions).squeeze(1).mean(0).mean(0)
+
+    def has_same_root(self, a, b):
+        for pos in ('v', 'n', 'a', 'r'):
+            if self.lemmatizer.lemmatize(a.lower(), pos) == self.lemmatizer.lemmatize(b.lower(), pos):
+                return True
+        return False

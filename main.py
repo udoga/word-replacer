@@ -1,13 +1,11 @@
 from pathlib import Path
 from transformers import RobertaTokenizer, RobertaForMaskedLM
-from source.lemmatizer import Lemmatizer
 from source.dropout_substituter import DropoutSubstituter
 from source.benchmark_reporter import BenchmarkReporter
 
 tokenizer = RobertaTokenizer.from_pretrained('roberta-base', add_prefix_space=True)
 model = RobertaForMaskedLM.from_pretrained('roberta-base', output_hidden_states=True, output_attentions=True, attn_implementation="eager")
-lemmatizer = Lemmatizer()
-substituter = DropoutSubstituter(tokenizer, model, lemmatizer, dropout_rate=0.3, candidate_count=50, alpha=0.01, iteration_count=1, deterministic=True)
+substituter = DropoutSubstituter(tokenizer, model, dropout_rate=0.3, candidate_count=50, alpha=0.01, iteration_count=1, deterministic=True)
 
 def run_substituter():
     text = "The wine he sent to me as my birthday gift is too powerful to drink"

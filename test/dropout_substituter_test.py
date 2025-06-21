@@ -5,7 +5,6 @@ from torch import Tensor
 from unittest import TestCase
 from transformers import RobertaTokenizer, RobertaForMaskedLM
 
-from source.lemmatizer import Lemmatizer
 from source.dropout_substituter import DropoutSubstituter
 
 class DropoutSubstituterTest(TestCase):
@@ -19,7 +18,7 @@ class DropoutSubstituterTest(TestCase):
                                                         attn_implementation="eager")
 
     def setUp(self):
-        self.substituter = DropoutSubstituter(self.tokenizer, self.model, Lemmatizer())
+        self.substituter = DropoutSubstituter(self.tokenizer, self.model)
 
     def test_gets_token_ids_from_text(self):
         self.assertEqual([0, 20760, 2], self.substituter.get_token_ids_from_text("hello"))
@@ -63,3 +62,14 @@ class DropoutSubstituterTest(TestCase):
         self.assertRaises(AssertionError, self.substituter.substitute, text, "film", 3)
         self.substituter.substitute(text, "film", 4) # no error
         self.substituter.substitute(text, "film", 7) # no error
+
+    def test_finds_if_words_has_same_root(self):
+        self.assertTrue(self.substituter.has_same_root("film", "films"))
+        self.assertTrue(self.substituter.has_same_root("tell", "told"))
+        self.assertFalse(self.substituter.has_same_root("tell", "film"))
+
+    def test_removes_candidates_with_same_root_with_target(self):
+        self.assertEqual(["end", "edge"], self.substituter.filter_candidates(["end", "Side", "sides", "Edge"], "side"))
+
+    def test_removes_punctuation_candidates(self):
+        self.assertEqual(["film"], self.substituter.filter_candidates([".", "..", "film"], "movie"))
