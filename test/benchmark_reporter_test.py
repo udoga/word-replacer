@@ -1,5 +1,6 @@
 from unittest import TestCase
 from pathlib import Path
+from statistics import mean
 import pandas as pd
 
 from source.mock_substituter import MockSubstituter
@@ -44,10 +45,9 @@ class BenchmarkReporterTest(TestCase):
         self.substituter.load_responses([["intelligent"], ["luminous"], ["brilliant"]])
         self.reporter.load_predictions(self.substituter)
         predictions_column = self.reporter.get_frame()["predictions"].to_list()
-        empty_predictions = ["" for _ in range(9)]
-        self.assertEqual(["intelligent"] + empty_predictions, predictions_column[0])
-        self.assertEqual(["luminous"] + empty_predictions, predictions_column[1])
-        self.assertEqual(["brilliant"] + empty_predictions, predictions_column[2])
+        self.assertEqual(["intelligent"], predictions_column[0])
+        self.assertEqual(["luminous"], predictions_column[1])
+        self.assertEqual(["brilliant"], predictions_column[2])
 
     def test_calculates_best_scores(self):
         self.reporter.load_dataset("lst_trial", 3)
@@ -55,6 +55,7 @@ class BenchmarkReporterTest(TestCase):
         self.reporter.load_predictions(self.substituter)
         self.reporter.load_scores()
         self.assertEqual([3/7, 2/5, 1/5], self.reporter.get_frame()["best_score"].to_list())
+        self.assertAlmostEqual(mean([3/7, 2/5, 1/5]), self.reporter.get_average_scores()["best_score"], places=6)
 
     def test_calculates_best_mode_scores(self):
         self.reporter.load_dataset("lst_trial", 3)
@@ -62,6 +63,7 @@ class BenchmarkReporterTest(TestCase):
         self.reporter.load_predictions(self.substituter)
         self.reporter.load_scores()
         self.assertEqual([1, 1, 0], self.reporter.get_frame()["best_mode_score"].to_list())
+        self.assertAlmostEqual(mean([1, 1, 0][1:]), self.reporter.get_average_scores()["best_mode_score"], places=6)
 
     def test_calculates_oot_scores(self):
         self.reporter.load_dataset("lst_trial", 3)
@@ -69,6 +71,7 @@ class BenchmarkReporterTest(TestCase):
         self.reporter.load_predictions(self.substituter)
         self.reporter.load_scores()
         self.assertEqual([1/7, 0, 1/5 + 2/5], self.reporter.get_frame()["oot_score"].to_list())
+        self.assertAlmostEqual(mean([1/7, 0, 1/5 + 2/5]), self.reporter.get_average_scores()["oot_score"], places=6)
 
     def test_calculates_oot_mode_scores(self):
         self.reporter.load_dataset("lst_trial", 3)
@@ -76,7 +79,22 @@ class BenchmarkReporterTest(TestCase):
         self.reporter.load_predictions(self.substituter)
         self.reporter.load_scores()
         self.assertEqual([1, 1, 0], self.reporter.get_frame()["oot_mode_score"].to_list())
+        self.assertAlmostEqual(mean([1, 1, 0][1:]), self.reporter.get_average_scores()["oot_mode_score"], places=6)
 
     def test_finds_if_there_is_tie_in_most_voted_substitutes(self):
         self.reporter.load_dataset("lst_trial", 3)
         self.assertEqual([True, False, False], self.reporter.get_frame()["tie"].to_list())
+
+    def test_skips_instances_with_missing_predictions(self):
+        self.reporter.load_dataset("lst_trial", 3)
+        self.substituter.load_responses([["intelligent"], [], ["colourful"]])
+        self.reporter.load_predictions(self.substituter)
+        self.reporter.load_scores()
+        self.assertEqual([3/7, 0.0, 2/5], self.reporter.get_frame()["best_score"].to_list())
+        self.assertEqual([1, 0, 1], self.reporter.get_frame()["best_mode_score"].to_list())
+        self.assertEqual([3/7, 0.0, 2/5], self.reporter.get_frame()["oot_score"].to_list())
+        self.assertEqual([1, 0, 1], self.reporter.get_frame()["oot_mode_score"].to_list())
+        self.assertAlmostEqual(mean([3/7, 2/5]), self.reporter.get_average_scores()["best_score"], places=6)
+        self.assertAlmostEqual(mean([1]), self.reporter.get_average_scores()["best_mode_score"], places=6)
+        self.assertAlmostEqual(mean([3/7, 2/5]), self.reporter.get_average_scores()["oot_score"], places=6)
+        self.assertAlmostEqual(mean([1]), self.reporter.get_average_scores()["oot_mode_score"], places=6)

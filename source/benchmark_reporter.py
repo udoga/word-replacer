@@ -32,25 +32,34 @@ class BenchmarkReporter:
 
     def load_predictions(self, substituter):
         self.frame["predictions"] = self.frame.apply(
-            lambda r: self.get_ten_predictions(substituter, r["text"], r["target"],  r["position"]), axis=1)
+            lambda r: self.get_predictions(substituter, r["text"], r["target"], r["position"]), axis=1)
 
     def load_scores(self):
         self.frame[["best_score", "best_mode_score", "oot_score", "oot_mode_score"]] = 0.0
         for r in self.frame.itertuples():
-            best_prediction = r.predictions[0]
+            best_prediction = r.predictions[0] if r.predictions else ""
             top_substitutes = self.get_top_substitutes(r.substitutes)
             self.frame.at[r.Index, "best_score"] = self.get_vote_weight(best_prediction, r.substitutes)
             self.frame.at[r.Index, "best_mode_score"] = int(best_prediction in top_substitutes)
             self.frame.at[r.Index, "oot_score"] = sum([self.get_vote_weight(p, r.substitutes) for p in r.predictions])
             self.frame.at[r.Index, "oot_mode_score"] = int(any(p in top_substitutes for p in r.predictions))
 
-    def get_ten_predictions(self, substituter, text, target, position):
-        predictions = []
+    def get_average_scores(self):
+        frame_predicted = self.frame[self.frame["predictions"].map(bool)]
+        frame_non_tie = frame_predicted[frame_predicted["tie"] == False]
+        return {
+            "best_score": frame_predicted["best_score"].mean().item(),
+            "best_mode_score": frame_non_tie["best_mode_score"].mean().item(),
+            "oot_score": frame_predicted["oot_score"].mean().item(),
+            "oot_mode_score": frame_non_tie["oot_mode_score"].mean().item()
+        }
+
+    def get_predictions(self, substituter, text, target, position):
         try:
-            predictions = substituter.get_predictions(text, target, position)
+            return substituter.get_predictions(text, target, position)[:10]
         except Exception as e:
             print(f"Could not get predictions: text='{text}' target='{target}' position='{position}'' error={e}")
-        return (predictions + ["" for _ in range(max(0, 10 - len(predictions)))])[:10]
+        return []
 
     def get_vote_weight(self, prediction, substitute_map):
         return substitute_map.get(prediction, 0) / sum(substitute_map.values())

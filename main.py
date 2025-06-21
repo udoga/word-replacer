@@ -17,6 +17,7 @@ def run_benchmark():
     reporter.load_dataset("lst_test", 5)
     reporter.load_predictions(substituter)
     reporter.load_scores()
-    print(reporter.get_frame().to_string())
+    print(reporter.get_frame().to_string(max_colwidth=30))
+    print(reporter.get_average_scores())
 
-run_substituter()
+run_benchmark()
