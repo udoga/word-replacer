@@ -1,10 +1,11 @@
 from pathlib import Path
-from transformers import BertTokenizer, BertForMaskedLM
+from transformers import AutoTokenizer, AutoModelForMaskedLM
 from source.dropout_substituter import DropoutSubstituter
 from source.benchmark_reporter import BenchmarkReporter
 
-tokenizer = BertTokenizer.from_pretrained('bert-large-uncased', add_prefix_space=True)
-model = BertForMaskedLM.from_pretrained('bert-large-uncased', output_hidden_states=True, output_attentions=True, attn_implementation="eager")
+model_name = "bert-large-uncased"
+tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, do_lower_case=True, add_prefix_space=True)
+model = AutoModelForMaskedLM.from_pretrained(model_name, output_hidden_states=True, output_attentions=True, attn_implementation="eager")
 substituter = DropoutSubstituter(tokenizer, model, dropout_rate=0.3, candidate_count=50, alpha=0.01, iteration_count=5, deterministic=True)
 
 def run_substituter():
