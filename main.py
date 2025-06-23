@@ -1,15 +1,15 @@
 from pathlib import Path
-from transformers import RobertaTokenizer, RobertaForMaskedLM
+from transformers import BertTokenizer, BertForMaskedLM
 from source.dropout_substituter import DropoutSubstituter
 from source.benchmark_reporter import BenchmarkReporter
 
-tokenizer = RobertaTokenizer.from_pretrained('roberta-base', add_prefix_space=True)
-model = RobertaForMaskedLM.from_pretrained('roberta-base', output_hidden_states=True, output_attentions=True, attn_implementation="eager")
+tokenizer = BertTokenizer.from_pretrained('bert-large-uncased', add_prefix_space=True)
+model = BertForMaskedLM.from_pretrained('bert-large-uncased', output_hidden_states=True, output_attentions=True, attn_implementation="eager")
 substituter = DropoutSubstituter(tokenizer, model, dropout_rate=0.3, candidate_count=50, alpha=0.01, iteration_count=5, deterministic=True)
 
 def run_substituter():
-    text = "The wine he sent to me as my birthday gift is too powerful to drink"
-    table = substituter.substitute(text, target="powerful", position=12)
+    text = "The wine he sent to me as my birthday gift is too strong to drink."
+    table = substituter.substitute(text, target="strong", position=12)
     print(table)
 
 def run_benchmark():
@@ -20,4 +20,4 @@ def run_benchmark():
     print(reporter.get_frame().to_string(max_colwidth=30))
     print("\nFinal scores:", reporter.get_average_scores())
 
-run_benchmark()
+run_substituter()

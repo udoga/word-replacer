@@ -16,4 +16,4 @@ class SubstitutionTable(dict):
     def __str__(self):
         frame = self.to_frame()
         frame.loc["Total"] = frame.sum(numeric_only=True)
-        return frame.to_string()
+        return frame.to_string(float_format="%0.6f")

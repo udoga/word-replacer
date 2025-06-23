@@ -63,8 +63,8 @@ class DropoutSubstituter:
 
     def find_token_index(self, text, position):
         words = text.split()
-        test_until_position = " ".join(words[:position])
-        encoding_until_position = self.tokenizer.encode(test_until_position)
+        text_until_position = " ".join(words[:position])
+        encoding_until_position = self.tokenizer.encode(text_until_position)
         return len(encoding_until_position) - 1
 
     def get_tokens_from_text(self, text):
