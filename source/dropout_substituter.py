@@ -1,6 +1,6 @@
 import string
 import torch
-from torch import Tensor
+from torch import Tensor, Generator
 from nltk.stem import WordNetLemmatizer
 from .substitution_table import SubstitutionTable
 
@@ -29,17 +29,17 @@ class DropoutSubstituter:
         vocab_probs = self.get_average_vocab_probs(clear_embeddings, target_index)
         candidate_ids = torch.topk(vocab_probs, k=self.candidate_count, dim=0).indices
         t['candidate'] = self.get_tokens_from_ids(candidate_ids.tolist())
-        t['candidate_prob'] = vocab_probs[candidate_ids]
+        t['candidate_prob'] = vocab_probs[candidate_ids].cpu()
         t['normalized_prob'] = self.get_normalized_probs(t['candidate_prob'], vocab_probs[target_id].item())
         t['proposal_score'] = torch.log(t['normalized_prob'])
         alternative_encodings = self.find_alternative_encodings(token_ids, target_index, candidate_ids)
         alternative_output = self.get_output_from_encodings(alternative_encodings)
         alternative_tokens_similarities = self.get_alternative_tokens_similarities(clear_output, alternative_output)
-        t['target_similarity'] = alternative_tokens_similarities[:, target_index]
+        t['target_similarity'] = alternative_tokens_similarities[:, target_index].cpu()
         token_target_attentions = self.get_average_attention_matrix(clear_output)[:, target_index]
         token_target_weights = token_target_attentions / token_target_attentions.sum()
-        t['validation_score'] = torch.matmul(alternative_tokens_similarities, token_target_weights)
-        t['final_score'] = t['validation_score'] + self.alpha * t['proposal_score']
+        t['validation_score'] = torch.matmul(alternative_tokens_similarities, token_target_weights).cpu()
+        t['final_score'] = t['validation_score'] + self.alpha * t['proposal_score'].cpu()
         return SubstitutionTable.from_frame(t.to_frame().sort_values(by=["final_score"], ascending=False))
 
     def get_predictions(self, text, target, position):
@@ -84,7 +84,7 @@ class DropoutSubstituter:
             return self.model.get_input_embeddings()(torch.tensor(encodings))
 
     def get_average_vocab_probs(self, clear_embeddings, target_index):
-        vocab_probs = torch.zeros(self.get_vocabulary_size(), dtype=torch.float32, device=clear_embeddings.device)
+        vocab_probs = torch.zeros(self.get_vocabulary_size(), dtype=torch.float32)
         for i in range(self.iteration_count):
             masked_embeddings = self.mask_target(clear_embeddings, target_index, self.dropout_rate, i)
             masked_output = self.get_output_from_embeddings(masked_embeddings)
@@ -102,7 +102,7 @@ class DropoutSubstituter:
     def apply_dropout(self, embedding: Tensor, dropout_rate, iteration_index):
         embedding_length = embedding.shape[0]
         dropout_count = round(dropout_rate * embedding_length)
-        generator = torch.Generator().manual_seed(iteration_index) if self.deterministic else None
+        generator = Generator(device=embedding.device).manual_seed(iteration_index) if self.deterministic else None
         dropout_indices = torch.randperm(embedding_length, generator=generator)[:dropout_count]
         embedding[dropout_indices] = 0
 

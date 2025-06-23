@@ -1,6 +1,7 @@
+pytest
 numpy
 pandas
-transformers
 torch
-pytest
+transformers
+accelerate
 nltk
