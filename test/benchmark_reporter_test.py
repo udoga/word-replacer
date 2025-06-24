@@ -98,3 +98,10 @@ class BenchmarkReporterTest(TestCase):
         self.assertAlmostEqual(mean([1]), self.reporter.get_average_scores()["best_mode_score"], places=6)
         self.assertAlmostEqual(mean([3/7, 2/5]), self.reporter.get_average_scores()["oot_score"], places=6)
         self.assertAlmostEqual(mean([1]), self.reporter.get_average_scores()["oot_mode_score"], places=6)
+
+    def test_counts_prediction_as_correct_when_it_has_different_form(self):
+        self.reporter.load_dataset("lst_trial", 3)
+        self.substituter.load_responses([["smartest"], ["clearer"], ["gleaming"]])
+        self.reporter.load_predictions(self.substituter)
+        self.reporter.load_scores()
+        self.assertEqual([1/7, 1/5, 0], self.reporter.get_frame()["oot_score"].to_list())

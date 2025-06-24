@@ -1,10 +1,12 @@
 import pandas as pd
 import csv
+from nltk import WordNetLemmatizer
 
 class BenchmarkReporter:
     def __init__(self, dataset_folder):
         self.frame = None
         self.dataset_folder = dataset_folder
+        self.lemmatizer = WordNetLemmatizer()
 
     def get_frame(self) -> pd.DataFrame:
         return self.frame
@@ -38,12 +40,13 @@ class BenchmarkReporter:
     def load_scores(self):
         self.frame[["best_score", "best_mode_score", "oot_score", "oot_mode_score"]] = 0.0
         for r in self.frame.itertuples():
-            best_prediction = r.predictions[0] if r.predictions else ""
+            predictions = [self.lemmatizer.lemmatize(p, r.type.split(".")[-1]) for p in r.predictions]
+            best_prediction = predictions[0] if predictions else ""
             top_substitutes = self.get_top_substitutes(r.substitutes)
             self.frame.at[r.Index, "best_score"] = self.get_vote_weight(best_prediction, r.substitutes)
             self.frame.at[r.Index, "best_mode_score"] = int(best_prediction in top_substitutes)
-            self.frame.at[r.Index, "oot_score"] = sum([self.get_vote_weight(p, r.substitutes) for p in r.predictions])
-            self.frame.at[r.Index, "oot_mode_score"] = int(any(p in top_substitutes for p in r.predictions))
+            self.frame.at[r.Index, "oot_score"] = sum([self.get_vote_weight(p, r.substitutes) for p in predictions])
+            self.frame.at[r.Index, "oot_mode_score"] = int(any(p in top_substitutes for p in predictions))
 
     def get_average_scores(self):
         frame_predicted = self.frame[self.frame["predictions"].map(bool)]
