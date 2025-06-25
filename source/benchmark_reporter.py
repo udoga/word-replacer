@@ -31,6 +31,7 @@ class BenchmarkReporter:
                 substitutes = {" ".join(c.split()[:-1]): int(c.split()[-1]) for c in right.split(";") if c.strip()}
                 self.frame.at[idx, "substitutes"] = substitutes
                 self.frame.at[idx, "tie"] = len(self.get_top_substitutes(substitutes)) > 1
+        self.frame = self.frame[self.frame['substitutes'].map(bool)]
 
     def load_predictions(self, substituter):
         self.frame["predictions"] = self.frame.apply(

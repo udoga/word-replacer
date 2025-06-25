@@ -105,3 +105,8 @@ class BenchmarkReporterTest(TestCase):
         self.reporter.load_predictions(self.substituter)
         self.reporter.load_scores()
         self.assertEqual([1/7, 1/5, 0], self.reporter.get_frame()["oot_score"].to_list())
+
+    def test_excludes_rows_with_no_substitutes(self):
+        self.reporter.load_dataset("lst_test")
+        self.assertEqual("about", self.reporter.get_frame().loc[566].target)
+        self.assertRaises(KeyError, lambda: self.reporter.get_frame().loc[567])

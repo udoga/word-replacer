@@ -1,5 +1,7 @@
-docs
-dataset
 .venv
 .idea
 __pycache__
+dataset
+notes
+papers
+reports
