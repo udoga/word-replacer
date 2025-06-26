@@ -5,7 +5,7 @@ from nltk.stem import WordNetLemmatizer
 from .substitution_table import SubstitutionTable
 
 class BertSubstituter:
-    def __init__(self, tokenizer, model, dropout_rate = 0.3, candidate_count = 10, alpha = 0.01, iteration_count=1,
+    def __init__(self, tokenizer, model, dropout_rate = 0.3, candidate_count = 50, alpha = 0.01, iteration_count=1,
                  deterministic=True, concatenate=False):
         self.tokenizer = tokenizer
         self.model = model
@@ -24,7 +24,7 @@ class BertSubstituter:
         target_index = self.find_token_index(text, position)
         target_id = token_ids[target_index]
         target_token = tokens[target_index]
-        assert self.has_same_root(target, target_token), f"Target {target} != {target_token} at {position}"
+        assert self.has_same_root(target, target_token), f"Target {target} != {target_token} at {target_index}"
         clear_embeddings = self.get_input_embeddings(token_ids)
         clear_output = self.get_output_from_embeddings(clear_embeddings)
         vocab_probs = self.get_average_vocab_probs(clear_embeddings, target_index)
@@ -64,9 +64,10 @@ class BertSubstituter:
 
     def find_token_index(self, text, position):
         words = text.split()
-        text_before = " ".join(words[:position])
+        text_before = " ".join(words[:position+1])
         encoding = self.tokenizer.encode(text, text_before) if self.concatenate else self.tokenizer.encode(text_before)
-        return len(encoding) - 1
+        target_encoding_length = len(self.tokenizer.encode(words[position])) - 2
+        return len(encoding) - 2 - (target_encoding_length - 1)
 
     def get_tokens_from_text(self, text):
         return self.get_tokens_from_ids(self.get_token_ids_from_text(text))

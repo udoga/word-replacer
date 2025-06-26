@@ -3,19 +3,16 @@ from numpy.testing import assert_array_equal
 import torch
 from torch import Tensor
 from unittest import TestCase
-from transformers import RobertaTokenizer, RobertaForMaskedLM
-
+from transformers import AutoModelForMaskedLM, AutoTokenizer
 from source.bert_substituter import BertSubstituter
 
 class DropoutSubstituterTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.tokenizer = RobertaTokenizer.from_pretrained('roberta-base', add_prefix_space=True)
-        cls.model = RobertaForMaskedLM.from_pretrained('roberta-base',
-                                                        output_hidden_states=True,
-                                                        output_attentions=True,
-                                                        attn_implementation="eager")
+        cls.tokenizer = AutoTokenizer.from_pretrained('roberta-base', add_prefix_space=True)
+        cls.model = AutoModelForMaskedLM.from_pretrained('roberta-base', output_hidden_states=True,
+                                                         output_attentions=True, attn_implementation="eager")
 
     def setUp(self):
         self.substituter = BertSubstituter(self.tokenizer, self.model)
@@ -55,6 +52,7 @@ class DropoutSubstituterTest(TestCase):
         self.assertEqual(1, self.substituter.find_token_index("hello", 0))
         self.assertEqual(3, self.substituter.find_token_index("he was bright and independent", 2))
         self.assertEqual(6, self.substituter.find_token_index("film literature cyberplace includes film reviews", 4))
+        self.assertEqual(5, self.substituter.find_token_index("and the prize for neatest idea", 4))
 
     def test_compares_given_target_and_found_target(self):
         text = "so , unlike studio films , independent films"
@@ -78,3 +76,4 @@ class DropoutSubstituterTest(TestCase):
         substituter = BertSubstituter(self.tokenizer, self.model, concatenate=True)
         self.assertEqual([0, 20760, 232, 2, 2, 20760, 232, 2], substituter.get_token_ids_from_text("hello world"))
         self.assertEqual(4, substituter.find_token_index("hello", 0))
+        self.assertEqual(14, substituter.find_token_index("and the prize for neatest idea", 4))
