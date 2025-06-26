@@ -5,8 +5,8 @@ from nltk.stem import WordNetLemmatizer
 from .substitution_table import SubstitutionTable
 
 class DropoutSubstituter:
-    def __init__(self, tokenizer, model,
-                 dropout_rate = 0.3, candidate_count = 10, alpha = 0.01, iteration_count=1, deterministic=True):
+    def __init__(self, tokenizer, model, dropout_rate = 0.3, candidate_count = 10, alpha = 0.01, iteration_count=1,
+                 deterministic=True, concatenate=False):
         self.tokenizer = tokenizer
         self.model = model
         self.lemmatizer = WordNetLemmatizer()
@@ -15,6 +15,7 @@ class DropoutSubstituter:
         self.alpha = alpha
         self.iteration_count = iteration_count
         self.deterministic = deterministic
+        self.concatenate = concatenate
 
     def substitute(self, text, target, position) -> SubstitutionTable:
         t = SubstitutionTable()
@@ -63,15 +64,15 @@ class DropoutSubstituter:
 
     def find_token_index(self, text, position):
         words = text.split()
-        text_until_position = " ".join(words[:position])
-        encoding_until_position = self.tokenizer.encode(text_until_position)
-        return len(encoding_until_position) - 1
+        text_before = " ".join(words[:position])
+        encoding = self.tokenizer.encode(text, text_before) if self.concatenate else self.tokenizer.encode(text_before)
+        return len(encoding) - 1
 
     def get_tokens_from_text(self, text):
         return self.get_tokens_from_ids(self.get_token_ids_from_text(text))
 
     def get_token_ids_from_text(self, text):
-        return self.tokenizer.encode(text)
+        return self.tokenizer.encode(text, text) if self.concatenate else self.tokenizer.encode(text)
 
     def get_tokens_from_ids(self, token_ids):
         return [c.strip() for c in self.tokenizer.batch_decode(token_ids)]

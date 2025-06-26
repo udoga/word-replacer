@@ -22,6 +22,7 @@ torch.set_default_device(torch.device("cuda" if torch.cuda.is_available() else "
 tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, do_lower_case=True, add_prefix_space=True)
 model = AutoModelForMaskedLM.from_pretrained(model_name, output_hidden_states=True, output_attentions=True, attn_implementation="eager")
 model = model.to(torch.get_default_device())
-substituter = DropoutSubstituter(tokenizer, model, dropout_rate=0.3, candidate_count=50, alpha=0.01, iteration_count=5, deterministic=True)
+substituter = DropoutSubstituter(tokenizer, model, dropout_rate=1, candidate_count=50, alpha=0.01, iteration_count=1,
+                                 deterministic=True, concatenate=True)
 
-run_benchmark()
+run_substituter()

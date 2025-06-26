@@ -73,3 +73,8 @@ class DropoutSubstituterTest(TestCase):
 
     def test_removes_punctuation_candidates(self):
         self.assertEqual(["film"], self.substituter.filter_candidates([".", "..", "film"], "movie"))
+
+    def test_duplicates_sentence_when_concatenation_is_enabled(self):
+        substituter = DropoutSubstituter(self.tokenizer, self.model, concatenate=True)
+        self.assertEqual([0, 20760, 232, 2, 2, 20760, 232, 2], substituter.get_token_ids_from_text("hello world"))
+        self.assertEqual(4, substituter.find_token_index("hello", 0))
