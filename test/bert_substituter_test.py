@@ -5,7 +5,7 @@ from torch import Tensor
 from unittest import TestCase
 from transformers import RobertaTokenizer, RobertaForMaskedLM
 
-from source.dropout_substituter import DropoutSubstituter
+from source.bert_substituter import BertSubstituter
 
 class DropoutSubstituterTest(TestCase):
     @classmethod
@@ -18,7 +18,7 @@ class DropoutSubstituterTest(TestCase):
                                                         attn_implementation="eager")
 
     def setUp(self):
-        self.substituter = DropoutSubstituter(self.tokenizer, self.model)
+        self.substituter = BertSubstituter(self.tokenizer, self.model)
 
     def test_gets_token_ids_from_text(self):
         self.assertEqual([0, 20760, 2], self.substituter.get_token_ids_from_text("hello"))
@@ -75,6 +75,6 @@ class DropoutSubstituterTest(TestCase):
         self.assertEqual(["film"], self.substituter.filter_candidates([".", "..", "film"], "movie"))
 
     def test_duplicates_sentence_when_concatenation_is_enabled(self):
-        substituter = DropoutSubstituter(self.tokenizer, self.model, concatenate=True)
+        substituter = BertSubstituter(self.tokenizer, self.model, concatenate=True)
         self.assertEqual([0, 20760, 232, 2, 2, 20760, 232, 2], substituter.get_token_ids_from_text("hello world"))
         self.assertEqual(4, substituter.find_token_index("hello", 0))

@@ -4,7 +4,7 @@ from torch import Tensor, Generator
 from nltk.stem import WordNetLemmatizer
 from .substitution_table import SubstitutionTable
 
-class DropoutSubstituter:
+class BertSubstituter:
     def __init__(self, tokenizer, model, dropout_rate = 0.3, candidate_count = 10, alpha = 0.01, iteration_count=1,
                  deterministic=True, concatenate=False):
         self.tokenizer = tokenizer
