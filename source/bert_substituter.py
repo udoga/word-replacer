@@ -2,6 +2,7 @@ import string
 import torch
 from torch import Tensor, Generator
 from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
 from .substitution_table import SubstitutionTable
 
 class BertSubstituter:
@@ -30,6 +31,7 @@ class BertSubstituter:
         vocab_probs = self.get_average_vocab_probs(clear_embeddings, target_index)
         candidate_ids = torch.topk(vocab_probs, k=self.candidate_count, dim=0).indices
         t['candidate'] = self.get_tokens_from_ids(candidate_ids.tolist())
+        t['is_included'] = self.are_candidates_included(t['candidate'], target)
         t['candidate_prob'] = vocab_probs[candidate_ids].cpu()
         t['normalized_prob'] = self.get_normalized_probs(t['candidate_prob'], vocab_probs[target_id].item())
         t['proposal_score'] = torch.log(t['normalized_prob'])
@@ -44,12 +46,8 @@ class BertSubstituter:
         return SubstitutionTable.from_frame(t.to_frame().sort_values(by=["final_score"], ascending=False))
 
     def get_predictions(self, text, target, position):
-        return self.filter_candidates(self.substitute(text, target, position)['candidate'], target)
-
-    def filter_candidates(self, candidates, target):
-        return [c.lower() for c in candidates
-                if not self.has_same_root(c, target)
-                and not any(p in c for p in string.punctuation)]
+        frame = self.substitute(text, target, position).to_frame()
+        return frame[frame['is_included']].index.values.tolist()
 
     def get_output_from_encodings(self, encodings):
         with torch.no_grad():
@@ -141,3 +139,11 @@ class BertSubstituter:
             if self.lemmatizer.lemmatize(a.lower(), pos) == self.lemmatizer.lemmatize(b.lower(), pos):
                 return True
         return False
+
+    def are_candidates_included(self, candidates, target):
+        return [self.is_candidate_included(c.lower(), target) for c in candidates]
+
+    def is_candidate_included(self, candidate, target):
+        return (not self.has_same_root(candidate, target)
+                and not any(punctuation in candidate for punctuation in string.punctuation)
+                and not candidate in stopwords.words("english"))

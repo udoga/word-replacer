@@ -5,6 +5,7 @@ from torch import Tensor
 from unittest import TestCase
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 from source.bert_substituter import BertSubstituter
+from substitution_table import SubstitutionTable
 
 class DropoutSubstituterTest(TestCase):
     @classmethod
@@ -66,14 +67,24 @@ class DropoutSubstituterTest(TestCase):
         self.assertTrue(self.substituter.has_same_root("tell", "told"))
         self.assertFalse(self.substituter.has_same_root("tell", "film"))
 
-    def test_removes_candidates_with_same_root_with_target(self):
-        self.assertEqual(["end", "edge"], self.substituter.filter_candidates(["end", "Side", "sides", "Edge"], "side"))
-
-    def test_removes_punctuation_candidates(self):
-        self.assertEqual(["film"], self.substituter.filter_candidates([".", "..", "film"], "movie"))
-
     def test_duplicates_sentence_when_concatenation_is_enabled(self):
         substituter = BertSubstituter(self.tokenizer, self.model, concatenate=True)
         self.assertEqual([0, 20760, 232, 2, 2, 20760, 232, 2], substituter.get_token_ids_from_text("hello world"))
         self.assertEqual(4, substituter.find_token_index("hello", 0))
         self.assertEqual(14, substituter.find_token_index("and the prize for neatest idea", 4))
+
+    def test_substitution_table_contains_a_column_indicating_exclusion(self):
+        text = "The wine was too strong to drink."
+        table: SubstitutionTable = self.substituter.substitute(text, "strong", 4)
+        self.assertEqual("strong", table["candidate"][0])
+        self.assertFalse(table["is_included"][0])
+        self.assertTrue("strong" not in self.substituter.get_predictions(text, "strong", 4))
+
+    def test_excludes_candidates_that_has_same_root_with_target(self):
+        self.assertEqual([False, True], self.substituter.are_candidates_included(["stronger", "powerful"], "strong"))
+
+    def test_excludes_punctuation_candidates(self):
+        self.assertEqual([True, False, False], self.substituter.are_candidates_included(["powerful", ".", ".."], ""))
+
+    def test_excludes_stopword_candidates(self):
+        self.assertEqual([False, True, False], self.substituter.are_candidates_included(["or", "powerful", "And"], ""))

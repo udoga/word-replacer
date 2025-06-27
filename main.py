@@ -26,4 +26,4 @@ model = AutoModelForMaskedLM.from_pretrained(model_name, output_hidden_states=Tr
 dropout_substituter = BertSubstituter(tokenizer, model, dropout_rate=0.3, iteration_count=5, deterministic=True)
 concat_substituter = BertSubstituter(tokenizer, model, concatenate=True, dropout_rate=1, alpha=0.01, candidate_count=50)
 
-run_benchmark(concat_substituter)
+run_substituter(concat_substituter)
