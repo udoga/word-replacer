@@ -17,6 +17,7 @@ class BertSubstituter:
         self.iteration_count = iteration_count
         self.deterministic = deterministic
         self.concatenate = concatenate
+        self.cos_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
 
     def substitute(self, text, target, position) -> SubstitutionTable:
         t = SubstitutionTable()
@@ -36,12 +37,13 @@ class BertSubstituter:
         t['normalized_prob'] = self.get_normalized_probs(t['candidate_prob'], vocab_probs[target_id].item())
         t['proposal_score'] = torch.log(t['normalized_prob'])
         alternative_encodings = self.find_alternative_encodings(token_ids, target_index, candidate_ids)
-        alternative_output = self.get_output_from_encodings(alternative_encodings)
-        alternative_tokens_similarities = self.get_alternative_tokens_similarities(clear_output, alternative_output)
-        t['target_similarity'] = alternative_tokens_similarities[:, target_index].cpu()
+        alternatives_output = self.get_output_from_encodings(alternative_encodings)
+        alternatives_token_similarities = self.get_alternatives_token_similarities(clear_output, alternatives_output)
+        t['cls_similarity'] = alternatives_token_similarities[:, 0].cpu()
+        t['target_similarity'] = alternatives_token_similarities[:, target_index].cpu()
         token_target_attentions = self.get_average_attention_matrix(clear_output)[:, target_index]
         token_target_weights = token_target_attentions / token_target_attentions.sum()
-        t['validation_score'] = torch.matmul(alternative_tokens_similarities, token_target_weights).cpu()
+        t['validation_score'] = torch.matmul(alternatives_token_similarities, token_target_weights).cpu()
         t['final_score'] = t['validation_score'] + self.alpha * t['proposal_score'].cpu()
         return SubstitutionTable.from_frame(t.to_frame().sort_values(by=["final_score"], ascending=False))
 
@@ -106,19 +108,21 @@ class BertSubstituter:
         dropout_indices = torch.randperm(embedding_length, generator=generator)[:dropout_count]
         embedding[dropout_indices] = 0
 
-    def get_alternative_tokens_similarities(self, original_output, alternatives_output) -> Tensor:
-        similarity_matrix = []
-        cos_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
+    def get_alternatives_token_similarities(self, original_output, alternatives_output, layer_count=4) -> Tensor:
+        tokens_alternative_similarities = []
         token_count = original_output.hidden_states[0].shape[1]
         for token_index in range(token_count):
-            original_representation = self.get_contextualized_representations(original_output, token_index)
-            alternative_representations = self.get_contextualized_representations(alternatives_output, token_index)
-            alternative_similarities_for_token = cos_similarity(original_representation, alternative_representations)
-            similarity_matrix.append(alternative_similarities_for_token)
-        return torch.stack(similarity_matrix).t()
+            tokens_alternative_similarities.append(self.get_alternative_similarities_for_token(
+                original_output, alternatives_output, token_index, layer_count))
+        return torch.stack(tokens_alternative_similarities).t()
 
-    def get_contextualized_representations(self, output, token_index) -> Tensor:
-        return torch.cat(tuple([output.hidden_states[i][:, token_index, :] for i in [-4, -3, -2, -1]]), dim=1)
+    def get_alternative_similarities_for_token(self, original_output, alternatives_output, token_index, layer_count=4):
+        original_representation = self.get_representations(original_output, token_index, layer_count)
+        alternative_representations = self.get_representations(alternatives_output, token_index, layer_count)
+        return self.cos_similarity(original_representation, alternative_representations)
+
+    def get_representations(self, output, token_index, layer_count=4) -> Tensor:
+        return torch.cat(tuple([output.hidden_states[i][:, token_index, :] for i in range(-layer_count, 0)]), dim=1)
 
     def get_normalized_probs(self, candidate_probs: Tensor, original_prediction_prob) -> Tensor:
         return torch.div(candidate_probs, (1.0 - original_prediction_prob))

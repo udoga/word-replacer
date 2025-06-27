@@ -17,7 +17,7 @@ def run_benchmark(substituter):
     print(reporter.get_frame().to_string(max_colwidth=100))
     print("\nFinal scores:", reporter.get_average_scores())
 
-model_name = "roberta-base"
+model_name = "bert-large-uncased"
 torch.set_default_device(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, do_lower_case=True, add_prefix_space=True)
 model = AutoModelForMaskedLM.from_pretrained(model_name, output_hidden_states=True, output_attentions=True,
@@ -26,4 +26,4 @@ model = AutoModelForMaskedLM.from_pretrained(model_name, output_hidden_states=Tr
 dropout_substituter = BertSubstituter(tokenizer, model, dropout_rate=0.3, iteration_count=5, deterministic=True)
 concat_substituter = BertSubstituter(tokenizer, model, concatenate=True, dropout_rate=1, alpha=0.01, candidate_count=50)
 
-run_substituter(concat_substituter)
+run_substituter(dropout_substituter)
