@@ -18,3 +18,7 @@ class SubstitutionTable(dict):
         totals = frame.select_dtypes(include='number').sum()
         frame.loc['Total', totals.index] = totals
         return frame.to_string(float_format="%0.6f")
+
+    def __iter__(self):
+        frame = self.to_frame()
+        return iter(frame[frame['is_included']].index.values.tolist())

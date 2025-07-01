@@ -62,7 +62,7 @@ class BenchmarkReporter:
     def get_predictions(self, text_id, substituter, text, target, position):
         print(f"\rLoading predictions for instance id: {text_id:<5}", end='', flush=True)
         try:
-            return substituter.get_predictions(text, target, position)[:10]
+            return list(substituter.substitute(text, target, position))[:10]
         except Exception as e:
             print(f"Error: {e}")
         return []

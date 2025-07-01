@@ -1,9 +1,11 @@
 class MockSubstituter:
     def __init__(self):
+        self.requests = []
         self.responses = []
         self.next_index = 0
 
-    def get_predictions(self, text, target, target_index):
+    def substitute(self, text, target, position):
+        self.requests.append({"text": text, "target": target, "position": position})
         if self.next_index >= len(self.responses): return []
         response = self.responses[self.next_index]
         self.next_index += 1

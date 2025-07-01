@@ -1,6 +1,8 @@
 import torch
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForMaskedLM
+
+from preprocessing_substituter import PreprocessingSubstituter
 from source.bert_substituter import BertSubstituter
 from source.benchmark_reporter import BenchmarkReporter
 
@@ -11,13 +13,13 @@ def run_substituter(substituter):
 
 def run_benchmark(substituter):
     reporter = BenchmarkReporter(Path(__file__).resolve().parents[0] / "dataset")
-    reporter.load_dataset("lst_trial", 100)
+    reporter.load_dataset("lst_trial")
     reporter.load_predictions(substituter)
     reporter.load_scores()
     print(reporter.get_frame().to_string(max_colwidth=100))
     print("\nFinal scores:", reporter.get_average_scores())
 
-model_name = "bert-large-uncased"
+model_name = "roberta-base"
 torch.set_default_device(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, do_lower_case=True, add_prefix_space=True)
 model = AutoModelForMaskedLM.from_pretrained(model_name, output_hidden_states=True, output_attentions=True,
@@ -25,5 +27,7 @@ model = AutoModelForMaskedLM.from_pretrained(model_name, output_hidden_states=Tr
 
 dropout_substituter = BertSubstituter(tokenizer, model, dropout_rate=0.3, iteration_count=5, deterministic=True)
 concat_substituter = BertSubstituter(tokenizer, model, concatenate=True, dropout_rate=1, alpha=0.01, candidate_count=50)
+blind_substituter = BertSubstituter(tokenizer, model, dropout_rate=1)
+preprocessing_substituter = PreprocessingSubstituter(blind_substituter, ["%", "(", "means", "%", ")"], 0)
 
-run_substituter(dropout_substituter)
+run_benchmark(preprocessing_substituter)
