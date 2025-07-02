@@ -33,6 +33,10 @@ class DropoutSubstituterTest(TestCase):
         self.assertEqual((3, 768), embeddings.shape)
         self.assertEqual((2, 3, 768), batch_embeddings.shape)
 
+    def test_gets_input_embedding_from_token_id(self):
+        embedding: Tensor = self.substituter.get_input_embedding(self.tokenizer.mask_token_id)
+        self.assertEqual((768,), embedding.shape)
+
     def test_applies_dropout(self):
         embedding = torch.ones(768)
         self.substituter.apply_dropout(embedding, 0.5, 0)

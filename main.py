@@ -2,7 +2,7 @@ import torch
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForMaskedLM
 
-from preprocessing_substituter import PreprocessingSubstituter
+from pattern_substituter import PatternSubstituter
 from source.bert_substituter import BertSubstituter
 from source.benchmark_reporter import BenchmarkReporter
 
@@ -25,9 +25,9 @@ tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, do_lower_ca
 model = AutoModelForMaskedLM.from_pretrained(model_name, output_hidden_states=True, output_attentions=True,
                                              attn_implementation="eager").to(torch.get_default_device())
 
-dropout_substituter = BertSubstituter(tokenizer, model, dropout_rate=0.3, iteration_count=5, deterministic=True)
-concat_substituter = BertSubstituter(tokenizer, model, concatenate=True, dropout_rate=1, alpha=0.01, candidate_count=50)
-blind_substituter = BertSubstituter(tokenizer, model, dropout_rate=1)
-preprocessing_substituter = PreprocessingSubstituter(blind_substituter, ["%", "(", "means", "%", ")"], 0)
+dropout_substituter = BertSubstituter(tokenizer, model, dropout_rate=0.5, iteration_count=5, alpha=0.01)
+concat_substituter = BertSubstituter(tokenizer, model, concatenate=True, dropout_rate=1, use_mask_token=True)
+blind_substituter = BertSubstituter(tokenizer, model, dropout_rate=1, use_mask_token=True, alpha=0.001)
+pattern_substituter = PatternSubstituter(dropout_substituter, ["%", "or", "%"], 2)
 
-run_benchmark(preprocessing_substituter)
+run_benchmark(pattern_substituter)

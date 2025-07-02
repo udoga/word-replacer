@@ -7,7 +7,7 @@ from .substitution_table import SubstitutionTable
 
 class BertSubstituter:
     def __init__(self, tokenizer, model, dropout_rate = 0.3, candidate_count = 50, alpha = 0.01, iteration_count=1,
-                 deterministic=True, concatenate=False):
+                 deterministic=True, concatenate=False, use_mask_token=False):
         self.tokenizer = tokenizer
         self.model = model
         self.lemmatizer = WordNetLemmatizer()
@@ -17,7 +17,9 @@ class BertSubstituter:
         self.iteration_count = iteration_count
         self.deterministic = deterministic
         self.concatenate = concatenate
+        self.use_mask_token = use_mask_token
         self.cos_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
+        self.mask_embedding = self.get_input_embedding(self.tokenizer.mask_token_id)
 
     def substitute(self, text, target, position) -> SubstitutionTable:
         t = SubstitutionTable()
@@ -44,7 +46,7 @@ class BertSubstituter:
         token_target_attentions = self.get_average_attention_matrix(clear_output)[:, target_index]
         token_target_weights = token_target_attentions / token_target_attentions.sum()
         t['validation_score'] = torch.matmul(alternatives_token_similarities, token_target_weights).cpu()
-        t['final_score'] = t['validation_score'] + self.alpha * t['proposal_score'].cpu()
+        t['final_score'] = t['target_similarity'] + self.alpha * t['proposal_score'].cpu()
         return SubstitutionTable.from_frame(t.to_frame().sort_values(by=["final_score"], ascending=False))
 
     def get_predictions(self, text, target, position):
@@ -78,6 +80,9 @@ class BertSubstituter:
     def get_tokens_from_ids(self, token_ids):
         return [c.strip() for c in self.tokenizer.batch_decode(token_ids)]
 
+    def get_input_embedding(self, token_id) -> Tensor:
+        return self.get_input_embeddings([token_id])[0]
+
     def get_input_embeddings(self, encoding) -> Tensor:
         return self.get_batch_input_embeddings([encoding])[0]
 
@@ -106,7 +111,7 @@ class BertSubstituter:
         dropout_count = round(dropout_rate * embedding_length)
         generator = Generator(device=embedding.device).manual_seed(iteration_index) if self.deterministic else None
         dropout_indices = torch.randperm(embedding_length, generator=generator)[:dropout_count]
-        embedding[dropout_indices] = 0
+        embedding[dropout_indices] = self.mask_embedding[dropout_indices] if self.use_mask_token else 0.0
 
     def get_alternatives_token_similarities(self, original_output, alternatives_output, layer_count=4) -> Tensor:
         tokens_alternative_similarities = []

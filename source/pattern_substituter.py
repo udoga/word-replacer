@@ -1,4 +1,4 @@
-class PreprocessingSubstituter:
+class PatternSubstituter:
     def __init__(self, next_substituter, replacement_words, position_change):
         self.substituter = next_substituter
         self.replacement_words = replacement_words

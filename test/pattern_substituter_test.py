@@ -1,12 +1,12 @@
 from unittest import TestCase
 
 from mock_substituter import MockSubstituter
-from source.preprocessing_substituter import PreprocessingSubstituter
+from source.pattern_substituter import PatternSubstituter
 
-class PreprocessingSubstituterTest(TestCase):
+class PatternSubstituterTest(TestCase):
     def setUp(self):
         self.substituter = MockSubstituter()
-        self.preprocessor = PreprocessingSubstituter(self.substituter, ["%", "(", "means", "%", ")"], 3)
+        self.preprocessor = PatternSubstituter(self.substituter, ["%", "(", "means", "%", ")"], 3)
 
     def test_preprocesses_text_and_position(self):
         self.substituter.load_responses([["strong"], ["he"]])
