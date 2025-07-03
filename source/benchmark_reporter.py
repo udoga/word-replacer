@@ -3,9 +3,10 @@ import csv
 from nltk import WordNetLemmatizer
 
 class BenchmarkReporter:
-    def __init__(self, dataset_folder):
+    def __init__(self, dataset_folder, print_tables=False):
         self.frame = None
         self.dataset_folder = dataset_folder
+        self.print_tables = print_tables
         self.lemmatizer = WordNetLemmatizer()
 
     def get_frame(self) -> pd.DataFrame:
@@ -60,9 +61,11 @@ class BenchmarkReporter:
         }
 
     def get_predictions(self, text_id, substituter, text, target, position):
-        print(f"\rLoading predictions for instance id: {text_id:<5}", end='', flush=True)
+        if not self.print_tables: print(f"\rLoading predictions for instance id: {text_id:<5}", end='', flush=True)
         try:
-            return list(substituter.substitute(text, target, position))[:10]
+            table = substituter.substitute(text, target, position)
+            if self.print_tables: print(table)
+            return list(table)[:10]
         except Exception as e:
             print(f"Error: {e}")
         return []

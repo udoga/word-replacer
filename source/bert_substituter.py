@@ -3,6 +3,8 @@ import torch
 from torch import Tensor, Generator
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
+from transformers import RobertaForMaskedLM, BertForMaskedLM
+
 from .substitution_table import SubstitutionTable
 
 class BertSubstituter:
@@ -27,14 +29,15 @@ class BertSubstituter:
         tokens = self.get_tokens_from_ids(token_ids)
         target_index = self.find_token_index(text, position)
         target_id = token_ids[target_index]
-        target_token = tokens[target_index]
+        target_token = tokens[target_index].strip()
         assert self.has_same_root(target, target_token), f"Target {target} != {target_token} at {target_index}"
         clear_embeddings = self.get_input_embeddings(token_ids)
         clear_output = self.get_output_from_embeddings(clear_embeddings)
         vocab_probs = self.get_average_vocab_probs(clear_embeddings, target_index)
         candidate_ids = torch.topk(vocab_probs, k=self.candidate_count, dim=0).indices
-        t['candidate'] = self.get_tokens_from_ids(candidate_ids.tolist())
-        t['is_included'] = self.are_candidates_included(t['candidate'], target)
+        candidate_tokens = self.get_tokens_from_ids(candidate_ids.tolist())
+        t['candidate'] = [t.strip() for t in candidate_tokens]
+        t['is_included'] = self.are_candidates_included(candidate_tokens, target)
         t['candidate_prob'] = vocab_probs[candidate_ids].cpu()
         t['normalized_prob'] = self.get_normalized_probs(t['candidate_prob'], vocab_probs[target_id].item())
         t['proposal_score'] = torch.log(t['normalized_prob'])
@@ -48,10 +51,6 @@ class BertSubstituter:
         t['validation_score'] = torch.matmul(alternatives_token_similarities, token_target_weights).cpu()
         t['final_score'] = t['target_similarity'] + self.alpha * t['proposal_score'].cpu()
         return SubstitutionTable.from_frame(t.to_frame().sort_values(by=["final_score"], ascending=False))
-
-    def get_predictions(self, text, target, position):
-        frame = self.substitute(text, target, position).to_frame()
-        return frame[frame['is_included']].index.values.tolist()
 
     def get_output_from_encodings(self, encodings):
         with torch.no_grad():
@@ -78,7 +77,12 @@ class BertSubstituter:
         return self.tokenizer.encode(text, text) if self.concatenate else self.tokenizer.encode(text)
 
     def get_tokens_from_ids(self, token_ids):
-        return [c.strip() for c in self.tokenizer.batch_decode(token_ids)]
+        return [self.normalize_token(t) for t in self.tokenizer.convert_ids_to_tokens(token_ids)]
+
+    def normalize_token(self, token):
+        if isinstance(self.model, RobertaForMaskedLM): return token.replace("Ġ", " ")
+        if isinstance(self.model, BertForMaskedLM): return (" " + token).replace(" ##", "")
+        return token
 
     def get_input_embedding(self, token_id) -> Tensor:
         return self.get_input_embeddings([token_id])[0]
@@ -149,8 +153,8 @@ class BertSubstituter:
                 return True
         return False
 
-    def are_candidates_included(self, candidates, target):
-        return [self.is_candidate_included(c.lower(), target) for c in candidates]
+    def are_candidates_included(self, candidates, target=""):
+        return [c.startswith(" ") and self.is_candidate_included(c.lower().strip(), target) for c in candidates]
 
     def is_candidate_included(self, candidate, target):
         return (not self.has_same_root(candidate, target)
