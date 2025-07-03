@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from mock_substituter import MockSubstituter
+from source.mock_substituter import MockSubstituter
 from source.pattern_substituter import PatternSubstituter
 
 class PatternSubstituterTest(TestCase):

@@ -5,7 +5,7 @@ from torch import Tensor
 from unittest import TestCase
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 from source.bert_substituter import BertSubstituter
-from substitution_table import SubstitutionTable
+from source.substitution_table import SubstitutionTable
 
 class DropoutSubstituterTest(TestCase):
     @classmethod
