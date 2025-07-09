@@ -12,9 +12,10 @@ class BenchmarkReporter:
     def get_frame(self) -> pd.DataFrame:
         return self.frame
 
-    def load_dataset(self, file_prefix, row_count = None):
+    def load_dataset(self, file_prefix, shuffle=False, row_count=None):
         self.load_sentences(file_prefix + ".preprocessed")
         self.load_substitutes(file_prefix + ".gold")
+        if shuffle: self.frame = self.frame.sample(frac=1)
         if row_count: self.frame = self.frame.head(row_count)
 
     def load_sentences(self, file_name):
@@ -61,7 +62,8 @@ class BenchmarkReporter:
         }
 
     def get_predictions(self, text_id, substituter, text, target, position):
-        if not self.print_tables: print(f"\rLoading predictions for instance id: {text_id:<5}", end='', flush=True)
+        if self.print_tables: print(f"Id={text_id} Target={target} Position={position} Text={text}")
+        else: print(f"\rLoading predictions for instance id: {text_id:<5}", end='', flush=True)
         try:
             table = substituter.substitute(text, target, position)
             if self.print_tables: print(table)
