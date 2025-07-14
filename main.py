@@ -2,6 +2,7 @@ import torch
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForMaskedLM
 
+from gpt_substituter import GptSubstituter
 from pattern_substituter import PatternSubstituter
 from source.bert_substituter import BertSubstituter
 from source.benchmark_reporter import BenchmarkReporter
@@ -29,5 +30,6 @@ dropout_substituter = BertSubstituter(tokenizer, model, dropout_rate=0.5, iterat
 concat_substituter = BertSubstituter(tokenizer, model, concatenate=True, dropout_rate=1, use_mask_token=True)
 blind_substituter = BertSubstituter(tokenizer, model, dropout_rate=1, use_mask_token=True, alpha=0.001)
 pattern_substituter = PatternSubstituter(dropout_substituter, ["%", "or", "%"], 2)
+gpt_substituter = GptSubstituter('gpt2-large')
 
-run_benchmark(pattern_substituter)
+run_substituter(gpt_substituter)
