@@ -83,15 +83,3 @@ class DropoutSubstituterTest(TestCase):
         self.assertEqual("strong", table["candidate"][0])
         self.assertFalse(table["is_included"][0])
         self.assertTrue("strong" not in list(self.substituter.substitute(text, "strong", 4)))
-
-    def test_excludes_continuation_token_candidates(self):
-        self.assertEqual([False], self.substituter.are_candidates_included(["nery"]))
-
-    def test_excludes_candidates_that_has_same_root_with_target(self):
-        self.assertEqual([False, True], self.substituter.are_candidates_included([" stronger", " powerful"], "strong"))
-
-    def test_excludes_punctuation_candidates(self):
-        self.assertEqual([True, False, False], self.substituter.are_candidates_included([" powerful", " .", " .."]))
-
-    def test_excludes_stopword_candidates(self):
-        self.assertEqual([False, True, False], self.substituter.are_candidates_included([" or", " powerful", " And"]))

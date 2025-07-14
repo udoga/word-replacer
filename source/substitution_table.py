@@ -21,4 +21,5 @@ class SubstitutionTable(dict):
 
     def __iter__(self):
         frame = self.to_frame()
-        return iter(frame[frame['is_included']].index.values.tolist())
+        filtered_frame = frame[frame['is_included']] if 'is_included' in frame else frame
+        return iter(filtered_frame.index.values.tolist())

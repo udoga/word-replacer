@@ -1,11 +1,9 @@
-import string
 import torch
 from torch import Tensor, Generator
 from nltk.stem import WordNetLemmatizer
-from nltk.corpus import stopwords
 from transformers import RobertaForMaskedLM, BertForMaskedLM
-
-from .substitution_table import SubstitutionTable
+from source.candidate_excluder import CandidateExcluder
+from source.substitution_table import SubstitutionTable
 
 class BertSubstituter:
     def __init__(self, tokenizer, model, dropout_rate = 0.3, candidate_count = 50, alpha = 0.01, iteration_count=1,
@@ -13,6 +11,7 @@ class BertSubstituter:
         self.tokenizer = tokenizer
         self.model = model
         self.lemmatizer = WordNetLemmatizer()
+        self.excluder = CandidateExcluder()
         self.dropout_rate = dropout_rate
         self.candidate_count = candidate_count
         self.alpha = alpha
@@ -37,7 +36,7 @@ class BertSubstituter:
         candidate_ids = torch.topk(vocab_probs, k=self.candidate_count, dim=0).indices
         candidate_tokens = self.get_tokens_from_ids(candidate_ids.tolist())
         t['candidate'] = [t.strip() for t in candidate_tokens]
-        t['is_included'] = self.are_candidates_included(candidate_tokens, target)
+        t['is_included'] = self.excluder.are_candidates_included(candidate_tokens, target)
         t['candidate_prob'] = vocab_probs[candidate_ids].cpu()
         t['normalized_prob'] = self.get_normalized_probs(t['candidate_prob'], vocab_probs[target_id].item())
         t['proposal_score'] = torch.log(t['normalized_prob'])
@@ -152,11 +151,3 @@ class BertSubstituter:
             if self.lemmatizer.lemmatize(a.lower(), pos) == self.lemmatizer.lemmatize(b.lower(), pos):
                 return True
         return False
-
-    def are_candidates_included(self, candidates, target=""):
-        return [c.startswith(" ") and self.is_candidate_included(c.lower().strip(), target) for c in candidates]
-
-    def is_candidate_included(self, candidate, target):
-        return (not self.has_same_root(candidate, target)
-                and not any(punctuation in candidate for punctuation in string.punctuation)
-                and not candidate in stopwords.words("english"))

@@ -32,4 +32,4 @@ blind_substituter = BertSubstituter(tokenizer, model, dropout_rate=1, use_mask_t
 pattern_substituter = PatternSubstituter(dropout_substituter, ["%", "or", "%"], 2)
 gpt_substituter = GptSubstituter('gpt2-large')
 
-run_substituter(gpt_substituter)
+run_benchmark(gpt_substituter)
