@@ -22,7 +22,7 @@ class BenchmarkReporter:
         self.frame = pd.read_csv(str(self.dataset_folder / file_name), names=["target", "id", "position", "text"],
                                  sep="\t", header=None, encoding="iso-8859-1", engine="python", quoting=csv.QUOTE_NONE)
         self.frame = self.frame.set_index("id")
-        self.frame[['target', 'type']] = (self.frame['target'].str.split('.', n=1, expand=True))
+        self.frame[['target', 'tag']] = (self.frame['target'].str.split('.', n=1, expand=True))
         self.frame['substitutes'] = [{} for _ in range(len(self.frame))]
 
     def load_substitutes(self, file_name):
@@ -37,13 +37,13 @@ class BenchmarkReporter:
 
     def load_predictions(self, substituter):
         self.frame["predictions"] = self.frame.apply(
-            lambda r: self.get_predictions(r.name, substituter, r["text"], r["target"], r["position"]), axis=1)
+            lambda r: self.get_predictions(r.name, substituter, r.text, r.target, r.position, r.tag), axis=1)
         print()
 
     def load_scores(self):
         self.frame[["best_score", "best_mode_score", "oot_score", "oot_mode_score"]] = 0.0
         for r in self.frame.itertuples():
-            predictions = [self.lemmatizer.lemmatize(p, r.type.split(".")[-1]) for p in r.predictions]
+            predictions = [self.lemmatizer.lemmatize(p, r.tag.split(".")[-1]) for p in r.predictions]
             best_prediction = predictions[0] if predictions else ""
             top_substitutes = self.get_top_substitutes(r.substitutes)
             self.frame.at[r.Index, "best_score"] = self.get_vote_weight(best_prediction, r.substitutes)
@@ -61,11 +61,11 @@ class BenchmarkReporter:
             "oot_mode_score": frame_non_tie["oot_mode_score"].mean().item()
         }
 
-    def get_predictions(self, text_id, substituter, text, target, position):
+    def get_predictions(self, text_id, substituter, text, target, position, tag):
         if self.print_tables: print(f"Id={text_id} Target={target} Position={position} Text={text}")
-        else: print(f"\rLoading predictions for instance id: {text_id:<5}", end='', flush=True)
+        else: print(f"\rLoading predictions for record: {text_id}/{self.frame.iloc[-1].name} ", end='', flush=True)
         try:
-            table = substituter.substitute(text, target, position)
+            table = substituter.substitute(text, target, position, tag)
             if self.print_tables: print(table)
             return list(table)[:10]
         except Exception as e:

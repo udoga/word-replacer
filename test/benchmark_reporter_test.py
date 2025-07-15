@@ -16,7 +16,7 @@ class BenchmarkReporterTest(TestCase):
         df = self.reporter.get_frame()
         self.assertIsInstance(df, pd.DataFrame)
         self.assertEqual("side", df.loc[302]["target"])
-        self.assertEqual("n", df.loc[302]["type"])
+        self.assertEqual("n", df.loc[302]["tag"])
         self.assertEqual(2, df.loc[302]["position"])
         self.assertEqual("he told me , \" stay with your civilian clothes .", df.loc[317]["text"])
         self.assertEqual({}, df.loc[302]["substitutes"])

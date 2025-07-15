@@ -8,8 +8,8 @@ from source.bert_substituter import BertSubstituter
 from source.benchmark_reporter import BenchmarkReporter
 
 def run_substituter(substituter):
-    text = "The wine he sent to me as my birthday gift is too powerful to drink."
-    table = substituter.substitute(text, target="powerful", position=12)
+    text = "The wine he sent to me as my birthday gift is too strong to drink."
+    table = substituter.substitute(text, target="strong", position=12)
     print(table)
 
 def run_benchmark(substituter):
@@ -17,7 +17,7 @@ def run_benchmark(substituter):
     reporter.load_dataset("lst_trial")
     reporter.load_predictions(substituter)
     reporter.load_scores()
-    print(reporter.get_frame().to_string(max_colwidth=100))
+    print(reporter.get_frame().to_string(max_colwidth=120))
     print("\nFinal scores:", reporter.get_average_scores())
 
 model_name = "roberta-base"

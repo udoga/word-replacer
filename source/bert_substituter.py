@@ -22,7 +22,7 @@ class BertSubstituter:
         self.cos_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
         self.mask_embedding = self.get_input_embedding(self.tokenizer.mask_token_id)
 
-    def substitute(self, text, target, position) -> SubstitutionTable:
+    def substitute(self, text, target, position, tag="") -> SubstitutionTable:
         t = SubstitutionTable()
         token_ids = self.get_token_ids_from_text(text)
         tokens = self.get_tokens_from_ids(token_ids)
@@ -36,7 +36,7 @@ class BertSubstituter:
         candidate_ids = torch.topk(vocab_probs, k=self.candidate_count, dim=0).indices
         candidate_tokens = self.get_tokens_from_ids(candidate_ids.tolist())
         t['candidate'] = [t.strip() for t in candidate_tokens]
-        t['is_included'] = self.excluder.are_candidates_included(candidate_tokens, target)
+        t['is_included'] = self.excluder.are_candidates_included(candidate_tokens, target, tag)
         t['candidate_prob'] = vocab_probs[candidate_ids].cpu()
         t['normalized_prob'] = self.get_normalized_probs(t['candidate_prob'], vocab_probs[target_id].item())
         t['proposal_score'] = torch.log(t['normalized_prob'])

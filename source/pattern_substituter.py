@@ -4,8 +4,8 @@ class PatternSubstituter:
         self.replacement_words = replacement_words
         self.position_change = position_change
 
-    def substitute(self, text, target, position):
-        return self.substituter.substitute(self.preprocess(text, position), target, position + self.position_change)
+    def substitute(self, text, target, position, tag=""):
+        return self.substituter.substitute(self.preprocess(text, position), target, position + self.position_change, tag)
 
     def preprocess(self, text, position):
         words = text.split()

@@ -16,3 +16,6 @@ class CandidateExcluderTest(TestCase):
 
     def test_excludes_stopword_candidates(self):
         self.assertEqual([False, True, False], self.excluder.are_candidates_included([" or", " powerful", " And"]))
+
+    def test_excludes_candidates_with_different_pos_tag(self):
+        self.assertEqual([False], self.excluder.are_candidates_included([" powering"], "powerful", "a"))
