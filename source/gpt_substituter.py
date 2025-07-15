@@ -24,7 +24,7 @@ class GptSubstituter:
         candidate_tokens = [self.tokenizer.decode([token_id]) for token_id in candidate_ids]
         candidates_included = self.excluder.are_candidates_included(candidate_tokens, target, tag)
         candidate_encodings = [self.get_candidate_encoding(text, position, c.strip()) for c in candidate_tokens]
-        pll_scores = [self.get_pll_score(e) if self.pll_enabled else 0 for e in candidate_encodings]
+        pll_scores = [self.get_pll_score(e) for e in candidate_encodings]
         frame = self.create_frame(candidate_tokens, candidates_included, candidate_probs, pll_scores)
         return SubstitutionTable.from_frame(frame)
 
@@ -41,15 +41,21 @@ class GptSubstituter:
         frame['is_included'] = is_included
         frame['probability'] = probabilities.cpu()
         frame['pll_score'] = pll_scores
-        frame = frame.sort_values(by=["probability"], ascending=False)
+        frame['probability_rank'] = frame['probability'].rank(ascending=True, method='dense').astype(int)
+        frame['pll_rank'] = frame['pll_score'].rank(ascending=True, method='dense').astype(int)
+        frame['rank'] = frame['probability_rank'] + frame['pll_rank']
+        frame = frame.sort_values(by=["rank"], ascending=False)
         return frame.set_index('candidate')
 
     def get_candidate_encoding(self, text, position, candidate_token):
         words = text.split()
         words[position] = candidate_token
-        return self.tokenizer.encode(" ".join(words), return_tensors='pt')
+        words = words + text.split()
+        candidate_text = " ".join(words)
+        return self.tokenizer.encode(candidate_text, return_tensors='pt')
 
     def get_pll_score(self, encoding):
+        if not self.pll_enabled: return 0.0
         with torch.no_grad():
             logits = self.model(encoding).logits
         log_probs = torch.nn.functional.log_softmax(logits, dim=-1)

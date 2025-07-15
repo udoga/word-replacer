@@ -2,8 +2,8 @@ import torch
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForMaskedLM
 
-from gpt_substituter import GptSubstituter
-from pattern_substituter import PatternSubstituter
+from source.gpt_substituter import GptSubstituter
+from source.pattern_substituter import PatternSubstituter
 from source.bert_substituter import BertSubstituter
 from source.benchmark_reporter import BenchmarkReporter
 
