@@ -19,3 +19,8 @@ class CandidateExcluderTest(TestCase):
 
     def test_excludes_candidates_with_different_pos_tag(self):
         self.assertEqual([False], self.excluder.are_candidates_included([" powering"], "powerful", "a"))
+
+    def test_finds_if_words_has_same_root(self):
+        self.assertTrue(self.excluder.has_same_root("film", "films"))
+        self.assertTrue(self.excluder.has_same_root("tell", "told"))
+        self.assertFalse(self.excluder.has_same_root("tell", "film"))

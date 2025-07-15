@@ -29,7 +29,7 @@ class BertSubstituter:
         target_index = self.find_token_index(text, position)
         target_id = token_ids[target_index]
         target_token = tokens[target_index].strip()
-        assert self.has_same_root(target, target_token), f"Target {target} != {target_token} at {target_index}"
+        assert self.excluder.has_same_root(target, target_token), f"Target {target} != {target_token} at {target_index}"
         clear_embeddings = self.get_input_embeddings(token_ids)
         clear_output = self.get_output_from_embeddings(clear_embeddings)
         vocab_probs = self.get_average_vocab_probs(clear_embeddings, target_index)
@@ -145,9 +145,3 @@ class BertSubstituter:
 
     def get_average_attention_matrix(self, output) -> Tensor:
         return torch.stack(output.attentions).squeeze(1).mean(0).mean(0)
-
-    def has_same_root(self, a, b):
-        for pos in ('v', 'n', 'a', 'r'):
-            if self.lemmatizer.lemmatize(a.lower(), pos) == self.lemmatizer.lemmatize(b.lower(), pos):
-                return True
-        return False

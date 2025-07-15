@@ -66,11 +66,6 @@ class DropoutSubstituterTest(TestCase):
         self.substituter.substitute(text, "film", 4) # no error
         self.substituter.substitute(text, "film", 7) # no error
 
-    def test_finds_if_words_has_same_root(self):
-        self.assertTrue(self.substituter.has_same_root("film", "films"))
-        self.assertTrue(self.substituter.has_same_root("tell", "told"))
-        self.assertFalse(self.substituter.has_same_root("tell", "film"))
-
     def test_duplicates_sentence_when_concatenation_is_enabled(self):
         substituter = BertSubstituter(self.tokenizer, self.model, concatenate=True)
         self.assertEqual([0, 20760, 232, 2, 2, 20760, 232, 2], substituter.get_token_ids_from_text("hello world"))
