@@ -1,12 +1,14 @@
 import pandas as pd
 import csv
 from nltk import WordNetLemmatizer
+from statistics import mean
 
 class BenchmarkReporter:
-    def __init__(self, dataset_folder, print_tables=False):
+    def __init__(self, dataset_folder, print_tables=False, print_progress=False):
         self.frame = None
         self.dataset_folder = dataset_folder
         self.print_tables = print_tables
+        self.print_progress = print_progress
         self.lemmatizer = WordNetLemmatizer()
 
     def get_frame(self) -> pd.DataFrame:
@@ -41,7 +43,6 @@ class BenchmarkReporter:
         print()
 
     def load_scores(self):
-        self.frame[["best_score", "best_mode_score", "oot_score", "oot_mode_score"]] = 0.0
         for r in self.frame.itertuples():
             predictions = [self.lemmatizer.lemmatize(p, r.tag.split(".")[-1]) for p in r.predictions]
             best_prediction = predictions[0] if predictions else ""
@@ -50,6 +51,9 @@ class BenchmarkReporter:
             self.frame.at[r.Index, "best_mode_score"] = int(best_prediction in top_substitutes)
             self.frame.at[r.Index, "oot_score"] = sum([self.get_vote_weight(p, r.substitutes) for p in predictions])
             self.frame.at[r.Index, "oot_mode_score"] = int(any(p in top_substitutes for p in predictions))
+            self.frame.at[r.Index, "precision@1"] = self.get_precision(predictions, 1, r.substitutes)
+            self.frame.at[r.Index, "precision@3"] = self.get_precision(predictions, 3, r.substitutes)
+            self.frame.at[r.Index, "recall@10"] = mean([int(s in predictions) for s in r.substitutes])
 
     def get_average_scores(self):
         frame_predicted = self.frame[self.frame["predictions"].map(bool)]
@@ -58,15 +62,17 @@ class BenchmarkReporter:
             "best_score": frame_predicted["best_score"].mean().item(),
             "best_mode_score": frame_non_tie["best_mode_score"].mean().item(),
             "oot_score": frame_predicted["oot_score"].mean().item(),
-            "oot_mode_score": frame_non_tie["oot_mode_score"].mean().item()
+            "oot_mode_score": frame_non_tie["oot_mode_score"].mean().item(),
+            "precision@1": frame_predicted["precision@1"].mean().item(),
+            "precision@3": frame_predicted["precision@3"].mean().item(),
+            "recall@10": frame_predicted["recall@10"].mean().item(),
         }
 
-    def get_predictions(self, text_id, substituter, text, target, position, tag):
-        if self.print_tables: print(f"Id={text_id} Target={target} Position={position} Text={text}")
-        else: print(f"\rLoading predictions for record: {text_id}/{self.frame.iloc[-1].name} ", end='', flush=True)
+    def get_predictions(self, idx, substituter, text, target, position, tag):
+        if self.print_progress: print(f"\rLoading predictions: {idx}/{self.frame.iloc[-1].name} ", end='', flush=True)
         try:
             table = substituter.substitute(text, target, position, tag)
-            if self.print_tables: print(table)
+            if self.print_tables: print(f"Id={idx} Target={target} Position={position} Text={text}\n{table}\n")
             return list(table)[:10]
         except Exception as e:
             print(f"Error: {e}")
@@ -77,3 +83,6 @@ class BenchmarkReporter:
 
     def get_top_substitutes(self, substitute_map):
         return [s for s, count in substitute_map.items() if count == max(substitute_map.values())]
+
+    def get_precision(self, predictions, count, substitute_map):
+        return sum([int(p in substitute_map) for p in predictions[:count]]) / count

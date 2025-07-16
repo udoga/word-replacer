@@ -13,7 +13,7 @@ def run_substituter(substituter):
     print(table)
 
 def run_benchmark(substituter):
-    reporter = BenchmarkReporter(Path(__file__).resolve().parents[0] / "dataset")
+    reporter = BenchmarkReporter(Path(__file__).resolve().parents[0] / "dataset", print_progress=True)
     reporter.load_dataset("lst_trial")
     reporter.load_predictions(substituter)
     reporter.load_scores()
@@ -26,10 +26,9 @@ tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, do_lower_ca
 model = AutoModelForMaskedLM.from_pretrained(model_name, output_hidden_states=True, output_attentions=True,
                                              attn_implementation="eager").to(torch.get_default_device())
 
-dropout_substituter = BertSubstituter(tokenizer, model, dropout_rate=0.5, iteration_count=5, alpha=0.01)
+dropout_substituter = BertSubstituter(tokenizer, model, dropout_rate=0.3, iteration_count=5, alpha=0.01)
 concat_substituter = BertSubstituter(tokenizer, model, concatenate=True, dropout_rate=1, use_mask_token=True)
-blind_substituter = BertSubstituter(tokenizer, model, dropout_rate=1, use_mask_token=True, alpha=0.001)
-pattern_substituter = PatternSubstituter(dropout_substituter, ["%", "or", "%"], 2)
+pattern_substituter = PatternSubstituter(dropout_substituter, ["%", "or", "%"], position_change=2)
 gpt_substituter = GptSubstituter('gpt2-large')
 
-run_benchmark(gpt_substituter)
+run_benchmark(pattern_substituter)

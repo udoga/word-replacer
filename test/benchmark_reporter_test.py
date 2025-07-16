@@ -81,6 +81,30 @@ class BenchmarkReporterTest(TestCase):
         self.assertEqual([1, 1, 0], self.reporter.get_frame()["oot_mode_score"].to_list())
         self.assertAlmostEqual(mean([1, 1, 0][1:]), self.reporter.get_average_scores()["oot_mode_score"], places=6)
 
+    def test_calculates_precision_1_scores(self):
+        self.reporter.load_dataset("lst_trial", row_count=3)
+        self.substituter.load_responses([["smart"], ["clear"], ["x", "colourful"]])
+        self.reporter.load_predictions(self.substituter)
+        self.reporter.load_scores()
+        self.assertEqual([1, 1, 0], self.reporter.get_frame()["precision@1"].to_list())
+        self.assertAlmostEqual(mean([1, 1, 0]), self.reporter.get_average_scores()["precision@1"], places=6)
+
+    def test_calculates_precision_3_scores(self):
+        self.reporter.load_dataset("lst_trial", row_count=3)
+        self.substituter.load_responses([["smart", "x", "clever"], ["x", "y", "clear", "light"], ["x", "colourful"]])
+        self.reporter.load_predictions(self.substituter)
+        self.reporter.load_scores()
+        self.assertEqual([2/3, 1/3, 1/3], self.reporter.get_frame()["precision@3"].to_list())
+        self.assertAlmostEqual(mean([2/3, 1/3, 1/3]), self.reporter.get_average_scores()["precision@3"], places=6)
+
+    def test_calculates_recall_10_scores(self):
+        self.reporter.load_dataset("lst_trial", row_count=3)
+        self.substituter.load_responses([["smart", "x", "clever"], ["x", "y", "clear", "light"], ["x", "colourful"]])
+        self.reporter.load_predictions(self.substituter)
+        self.reporter.load_scores()
+        self.assertEqual([2/3, 2/4, 1/4], self.reporter.get_frame()["recall@10"].to_list())
+        self.assertAlmostEqual(mean([2/3, 2/4, 1/4]), self.reporter.get_average_scores()["recall@10"], places=6)
+
     def test_finds_if_there_is_tie_in_most_voted_substitutes(self):
         self.reporter.load_dataset("lst_trial", row_count=3)
         self.assertEqual([True, False, False], self.reporter.get_frame()["tie"].to_list())
