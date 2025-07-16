@@ -19,22 +19,22 @@ class BenchmarkReporterTest(TestCase):
         self.assertEqual("n", df.loc[302]["tag"])
         self.assertEqual(2, df.loc[302]["position"])
         self.assertEqual("he told me , \" stay with your civilian clothes .", df.loc[317]["text"])
-        self.assertEqual({}, df.loc[302]["substitutes"])
-        self.assertEqual({}, df.loc[317]["substitutes"])
+        self.assertEqual({}, df.loc[302]["gold_map"])
+        self.assertEqual({}, df.loc[317]["gold_map"])
 
-    def test_loads_substitutes(self):
+    def test_loads_gold_map(self):
         self.reporter.load_sentences("lst_test.preprocessed")
-        self.reporter.load_substitutes("lst_test.gold")
+        self.reporter.load_gold_map("lst_test.gold")
         df = self.reporter.get_frame()
-        self.assertEqual(1, df.loc[302]["substitutes"]["ally"])
-        self.assertTrue("for us" not in df.loc[302]["substitutes"]) # removes multi-word substitutes
-        self.assertEqual({"order": 1, "instruct": 1, "assure": 1}, df.loc[317]["substitutes"])
+        self.assertEqual(1, df.loc[302]["gold_map"]["ally"])
+        self.assertTrue("for us" not in df.loc[302]["gold_map"]) # removes multi-word golds
+        self.assertEqual({"order": 1, "instruct": 1, "assure": 1}, df.loc[317]["gold_map"])
 
     def test_loads_sentences_and_substitutes(self):
         self.reporter.load_dataset("lst_all")
         df = self.reporter.get_frame()
         self.assertEqual("bright", df.loc[1]["target"])
-        self.assertEqual(3, df.loc[1]["substitutes"]["intelligent"])
+        self.assertEqual(3, df.loc[1]["gold_map"]["intelligent"])
 
     def test_loads_desired_number_of_rows(self):
         self.reporter.load_dataset("lst_trial", row_count=1)
@@ -106,7 +106,7 @@ class BenchmarkReporterTest(TestCase):
         self.assertEqual([2/3, 2/4, 1/4], self.reporter.get_frame()["recall@10"].to_list())
         self.assertAlmostEqual(mean([2/3, 2/4, 1/4]), self.reporter.get_average_scores()["recall@10"], places=6)
 
-    def test_finds_if_there_is_tie_in_most_voted_substitutes(self):
+    def test_finds_if_there_is_tie_in_top_golds(self):
         self.reporter.load_dataset("lst_trial", row_count=3)
         self.assertEqual([True, False, False], self.reporter.get_frame()["tie"].to_list())
 
@@ -131,7 +131,7 @@ class BenchmarkReporterTest(TestCase):
         self.reporter.load_scores()
         self.assertEqual([1/7, 1/5, 0], self.reporter.get_frame()["oot_score"].to_list())
 
-    def test_excludes_rows_with_no_substitutes(self):
+    def test_excludes_rows_with_no_gold_data(self):
         self.reporter.load_dataset("lst_test")
         self.assertEqual("about", self.reporter.get_frame().loc[566].target)
         self.assertRaises(KeyError, lambda: self.reporter.get_frame().loc[567])

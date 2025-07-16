@@ -17,7 +17,7 @@ class BenchmarkReporter:
 
     def load_dataset(self, file_prefix, shuffle=False, row_count=None):
         self.load_sentences(file_prefix + ".preprocessed")
-        self.load_substitutes(file_prefix + ".gold")
+        self.load_gold_map(file_prefix + ".gold")
         if shuffle: self.frame = self.frame.sample(frac=1)
         if row_count: self.frame = self.frame.head(row_count)
 
@@ -26,17 +26,17 @@ class BenchmarkReporter:
                                  sep="\t", header=None, encoding="iso-8859-1", engine="python", quoting=csv.QUOTE_NONE)
         self.frame = self.frame.set_index("id")
         self.frame[['target', 'tag']] = (self.frame['target'].str.split('.', n=1, expand=True))
-        self.frame['substitutes'] = [{} for _ in range(len(self.frame))]
+        self.frame['gold_map'] = [{} for _ in range(len(self.frame))]
 
-    def load_substitutes(self, file_name):
+    def load_gold_map(self, file_name):
         with open(str(self.dataset_folder / file_name), 'r', encoding="iso-8859-1") as file:
             for line in file:
                 left, right = [p.strip() for p in line.strip().split("::")]
                 idx = int(left.split()[-1])
-                substitutes = {" ".join(c.split()[:-1]): int(c.split()[-1]) for c in right.split(";") if c.strip()}
-                self.frame.at[idx, "substitutes"] = {k: v for k, v in substitutes.items() if ' ' not in k}
-                self.frame.at[idx, "tie"] = len(self.get_top_substitutes(substitutes)) > 1
-        self.frame = self.frame[self.frame['substitutes'].map(bool)]
+                gold_map = {" ".join(c.split()[:-1]): int(c.split()[-1]) for c in right.split(";") if c.strip()}
+                self.frame.at[idx, "gold_map"] = {k: v for k, v in gold_map.items() if ' ' not in k}
+                self.frame.at[idx, "tie"] = len(self.get_top_golds(gold_map)) > 1
+        self.frame = self.frame[self.frame['gold_map'].map(bool)]
 
     def load_predictions(self, substituter):
         self.frame["predictions"] = self.frame.apply(
@@ -47,15 +47,15 @@ class BenchmarkReporter:
         for r in self.frame.itertuples():
             predictions = [self.lemmatizer.lemmatize(p, r.tag.split(".")[-1]) for p in r.predictions]
             best_prediction = predictions[0] if predictions else ""
-            top_substitutes = self.get_top_substitutes(r.substitutes)
-            self.frame.at[r.Index, "best_score"] = self.get_vote_weight(best_prediction, r.substitutes)
-            self.frame.at[r.Index, "best_mode_score"] = int(best_prediction in top_substitutes)
-            self.frame.at[r.Index, "oot_score"] = sum([self.get_vote_weight(p, r.substitutes) for p in predictions])
-            self.frame.at[r.Index, "oot_mode_score"] = int(any(p in top_substitutes for p in predictions))
-            self.frame.at[r.Index, "precision@1"] = self.get_precision(predictions, 1, r.substitutes)
-            self.frame.at[r.Index, "precision@3"] = self.get_precision(predictions, 3, r.substitutes)
-            self.frame.at[r.Index, "recall@10"] = mean([int(s in predictions) for s in r.substitutes])
-            self.frame.at[r.Index, "gap_score"] = self.get_gap_score(predictions, r.substitutes)
+            top_golds = self.get_top_golds(r.gold_map)
+            self.frame.at[r.Index, "best_score"] = self.get_vote_weight(best_prediction, r.gold_map)
+            self.frame.at[r.Index, "best_mode_score"] = int(best_prediction in top_golds)
+            self.frame.at[r.Index, "oot_score"] = sum([self.get_vote_weight(p, r.gold_map) for p in predictions])
+            self.frame.at[r.Index, "oot_mode_score"] = int(any(p in top_golds for p in predictions))
+            self.frame.at[r.Index, "precision@1"] = self.get_precision(predictions, 1, r.gold_map)
+            self.frame.at[r.Index, "precision@3"] = self.get_precision(predictions, 3, r.gold_map)
+            self.frame.at[r.Index, "recall@10"] = mean([int(s in predictions) for s in r.gold_map])
+            self.frame.at[r.Index, "gap_score"] = self.get_gap_score(predictions, r.gold_map)
 
     def get_average_scores(self):
         frame_predicted = self.frame[self.frame["predictions"].map(bool)]
@@ -87,16 +87,16 @@ class BenchmarkReporter:
             print(f"Error: {e}")
         return []
 
-    def get_vote_weight(self, prediction, substitute_map):
-        return substitute_map.get(prediction, 0) / sum(substitute_map.values())
+    def get_vote_weight(self, prediction, gold_map):
+        return gold_map.get(prediction, 0) / sum(gold_map.values())
 
-    def get_top_substitutes(self, substitute_map):
-        return [s for s, count in substitute_map.items() if count == max(substitute_map.values())]
+    def get_top_golds(self, gold_map):
+        return [s for s, count in gold_map.items() if count == max(gold_map.values())]
 
-    def get_precision(self, predictions, count, substitute_map):
-        return sum([int(p in substitute_map) for p in predictions[:count]]) / count
+    def get_precision(self, predictions, count, gold_map):
+        return sum([int(p in gold_map) for p in predictions[:count]]) / count
 
-    def get_gap_score(self, predictions, substitute_map):
-        substitute_pairs = [[k, v] for k, v in substitute_map.items()]
+    def get_gap_score(self, predictions, gold_map):
+        gold_pairs = [[k, v] for k, v in gold_map.items()]
         prediction_pairs = [[predictions[i], len(predictions)-i] for i in range(len(predictions))]
-        return GeneralizedAveragePrecision.calc(substitute_pairs, prediction_pairs)
+        return GeneralizedAveragePrecision.calc(gold_pairs, prediction_pairs)
