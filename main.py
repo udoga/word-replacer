@@ -1,7 +1,5 @@
 import torch
 from pathlib import Path
-from transformers import AutoTokenizer, AutoModelForMaskedLM
-
 from source.gpt_substituter import GptSubstituter
 from source.pattern_substituter import PatternSubstituter
 from source.bert_substituter import BertSubstituter
@@ -19,15 +17,12 @@ def run_benchmark(substituter):
     reporter.load_scores()
     reporter.print_report()
 
-model_name = "roberta-base"
+def get_substituter(name):
+    if name == "dropout": return BertSubstituter("roberta-base", dropout_rate=0.3, iteration_count=5, alpha=0.01)
+    if name == "concat": return BertSubstituter("roberta-base", concatenate=True, dropout_rate=1, use_mask_token=True)
+    if name == "pattern": return PatternSubstituter(get_substituter("dropout"), ["%", "or", "%"], position_change=2)
+    if name == "gpt": return GptSubstituter("gpt2-large", pll_enabled=False)
+    return None
+
 torch.set_default_device(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
-tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, do_lower_case=True, add_prefix_space=True)
-model = AutoModelForMaskedLM.from_pretrained(model_name, output_hidden_states=True, output_attentions=True,
-                                             attn_implementation="eager").to(torch.get_default_device())
-
-dropout_substituter = BertSubstituter(tokenizer, model, dropout_rate=0.3, iteration_count=5, alpha=0.01)
-concat_substituter = BertSubstituter(tokenizer, model, concatenate=True, dropout_rate=1, use_mask_token=True)
-pattern_substituter = PatternSubstituter(dropout_substituter, ["%", "or", "%"], position_change=2)
-gpt_substituter = GptSubstituter('gpt2-large')
-
-run_benchmark(dropout_substituter)
+run_substituter(get_substituter("dropout"))

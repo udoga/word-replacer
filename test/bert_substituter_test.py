@@ -3,20 +3,13 @@ from numpy.testing import assert_array_equal
 import torch
 from torch import Tensor
 from unittest import TestCase
-from transformers import AutoModelForMaskedLM, AutoTokenizer
 from source.bert_substituter import BertSubstituter
 from source.substitution_table import SubstitutionTable
 
 class DropoutSubstituterTest(TestCase):
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
-        cls.tokenizer = AutoTokenizer.from_pretrained('roberta-base', add_prefix_space=True)
-        cls.model = AutoModelForMaskedLM.from_pretrained('roberta-base', output_hidden_states=True,
-                                                         output_attentions=True, attn_implementation="eager")
-
-    def setUp(self):
-        self.substituter = BertSubstituter(self.tokenizer, self.model)
+        cls.substituter = BertSubstituter("roberta-base")
 
     def test_gets_token_ids_from_text(self):
         self.assertEqual([0, 20760, 2], self.substituter.get_token_ids_from_text("hello"))
@@ -34,7 +27,7 @@ class DropoutSubstituterTest(TestCase):
         self.assertEqual((2, 3, 768), batch_embeddings.shape)
 
     def test_gets_input_embedding_from_token_id(self):
-        embedding: Tensor = self.substituter.get_input_embedding(self.tokenizer.mask_token_id)
+        embedding: Tensor = self.substituter.get_input_embedding(self.substituter.tokenizer.mask_token_id)
         self.assertEqual((768,), embedding.shape)
 
     def test_applies_dropout(self):
@@ -67,7 +60,7 @@ class DropoutSubstituterTest(TestCase):
         self.substituter.substitute(text, "film", 7) # no error
 
     def test_duplicates_sentence_when_concatenation_is_enabled(self):
-        substituter = BertSubstituter(self.tokenizer, self.model, concatenate=True)
+        substituter = BertSubstituter("roberta-base", concatenate=True)
         self.assertEqual([0, 20760, 232, 2, 2, 20760, 232, 2], substituter.get_token_ids_from_text("hello world"))
         self.assertEqual(4, substituter.find_token_index("hello", 0))
         self.assertEqual(14, substituter.find_token_index("and the prize for neatest idea", 4))

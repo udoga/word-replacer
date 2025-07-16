@@ -1,12 +1,9 @@
 # Word Replacer
 
-## Setup
-```
-python3 -m venv .venv
-source .venv/bin/activate # .venv\Scripts\activate for Windows
-pip install -r requirements.txt
-python -c "import nltk; nltk.download('wordnet')"
-./download_dataset.sh
-pytest
-python main.py
-```
+* Initialize virtual env: `python3 -m venv .venv`
+* Activate virtual env: `source .venv/bin/activate` or `.venv\Scripts\activate`
+* Install dependencies: `pip install -r requirements.txt`
+* Download wordnet: `python -c "import nltk; nltk.download('wordnet')"`
+* Download dataset: `./download_dataset.sh`
+* Run unit tests: `pytest`
+* Run substituter or benchmark: `python main.py`

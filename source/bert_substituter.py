@@ -1,15 +1,17 @@
 import torch
 from torch import Tensor, Generator
+from transformers import AutoTokenizer, AutoModelForMaskedLM
 from nltk.stem import WordNetLemmatizer
 from transformers import RobertaForMaskedLM, BertForMaskedLM
 from source.candidate_excluder import CandidateExcluder
 from source.substitution_table import SubstitutionTable
 
 class BertSubstituter:
-    def __init__(self, tokenizer, model, dropout_rate = 0.3, candidate_count = 50, alpha = 0.01, iteration_count=1,
+    def __init__(self, model_name, dropout_rate = 0.3, candidate_count = 50, alpha = 0.01, iteration_count=1,
                  deterministic=True, concatenate=False, use_mask_token=False):
-        self.tokenizer = tokenizer
-        self.model = model
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=True, add_prefix_space=True)
+        self.model = AutoModelForMaskedLM.from_pretrained(model_name, output_hidden_states=True, output_attentions=True,
+                attn_implementation="eager").to(torch.get_default_device())
         self.lemmatizer = WordNetLemmatizer()
         self.excluder = CandidateExcluder()
         self.dropout_rate = dropout_rate
