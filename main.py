@@ -17,8 +17,7 @@ def run_benchmark(substituter):
     reporter.load_dataset("lst_trial")
     reporter.load_predictions(substituter)
     reporter.load_scores()
-    print(reporter.get_frame().to_string(max_colwidth=120))
-    print("\nFinal scores:", reporter.get_average_scores())
+    reporter.print_report()
 
 model_name = "roberta-base"
 torch.set_default_device(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
@@ -31,4 +30,4 @@ concat_substituter = BertSubstituter(tokenizer, model, concatenate=True, dropout
 pattern_substituter = PatternSubstituter(dropout_substituter, ["%", "or", "%"], position_change=2)
 gpt_substituter = GptSubstituter('gpt2-large')
 
-run_benchmark(pattern_substituter)
+run_benchmark(dropout_substituter)

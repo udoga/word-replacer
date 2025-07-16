@@ -2,6 +2,7 @@ import pandas as pd
 import csv
 from nltk import WordNetLemmatizer
 from statistics import mean
+from source.gap_scorer import GeneralizedAveragePrecision
 
 class BenchmarkReporter:
     def __init__(self, dataset_folder, print_tables=False, print_progress=False):
@@ -54,6 +55,7 @@ class BenchmarkReporter:
             self.frame.at[r.Index, "precision@1"] = self.get_precision(predictions, 1, r.substitutes)
             self.frame.at[r.Index, "precision@3"] = self.get_precision(predictions, 3, r.substitutes)
             self.frame.at[r.Index, "recall@10"] = mean([int(s in predictions) for s in r.substitutes])
+            self.frame.at[r.Index, "gap_score"] = self.get_gap_score(predictions, r.substitutes)
 
     def get_average_scores(self):
         frame_predicted = self.frame[self.frame["predictions"].map(bool)]
@@ -66,7 +68,14 @@ class BenchmarkReporter:
             "precision@1": frame_predicted["precision@1"].mean().item(),
             "precision@3": frame_predicted["precision@3"].mean().item(),
             "recall@10": frame_predicted["recall@10"].mean().item(),
+            "gap_score": frame_predicted["gap_score"].mean().item(),
         }
+
+    def print_report(self):
+        print(self.get_frame().to_string(max_colwidth=120))
+        print("\nFinal scores:")
+        for label, score in self.get_average_scores().items():
+            print(f"{label:>20}: {score:.6f}")
 
     def get_predictions(self, idx, substituter, text, target, position, tag):
         if self.print_progress: print(f"\rLoading predictions: {idx}/{self.frame.iloc[-1].name} ", end='', flush=True)
@@ -86,3 +95,8 @@ class BenchmarkReporter:
 
     def get_precision(self, predictions, count, substitute_map):
         return sum([int(p in substitute_map) for p in predictions[:count]]) / count
+
+    def get_gap_score(self, predictions, substitute_map):
+        substitute_pairs = [[k, v] for k, v in substitute_map.items()]
+        prediction_pairs = [[predictions[i], len(predictions)-i] for i in range(len(predictions))]
+        return GeneralizedAveragePrecision.calc(substitute_pairs, prediction_pairs)
