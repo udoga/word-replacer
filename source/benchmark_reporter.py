@@ -34,7 +34,7 @@ class BenchmarkReporter:
                 left, right = [p.strip() for p in line.strip().split("::")]
                 idx = int(left.split()[-1])
                 substitutes = {" ".join(c.split()[:-1]): int(c.split()[-1]) for c in right.split(";") if c.strip()}
-                self.frame.at[idx, "substitutes"] = substitutes
+                self.frame.at[idx, "substitutes"] = {k: v for k, v in substitutes.items() if ' ' not in k}
                 self.frame.at[idx, "tie"] = len(self.get_top_substitutes(substitutes)) > 1
         self.frame = self.frame[self.frame['substitutes'].map(bool)]
 

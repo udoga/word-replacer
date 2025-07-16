@@ -26,8 +26,9 @@ class BenchmarkReporterTest(TestCase):
         self.reporter.load_sentences("lst_test.preprocessed")
         self.reporter.load_substitutes("lst_test.gold")
         df = self.reporter.get_frame()
-        self.assertEqual(1, df.loc[302]["substitutes"]["for us"])
-        self.assertEqual({"say to": 3, "order": 1, "instruct": 1, "assure": 1}, df.loc[317]["substitutes"])
+        self.assertEqual(1, df.loc[302]["substitutes"]["ally"])
+        self.assertTrue("for us" not in df.loc[302]["substitutes"]) # removes multi-word substitutes
+        self.assertEqual({"order": 1, "instruct": 1, "assure": 1}, df.loc[317]["substitutes"])
 
     def test_loads_sentences_and_substitutes(self):
         self.reporter.load_dataset("lst_all")
