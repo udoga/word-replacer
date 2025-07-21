@@ -4,7 +4,7 @@ from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from source.candidate_excluder import CandidateExcluder
 from source.substitution_table import SubstitutionTable
 
-class GptSubstituter:
+class Gpt2Substituter:
     def __init__(self, model_name, pll_enabled=False):
         self.tokenizer = GPT2Tokenizer.from_pretrained(model_name)
         self.model = GPT2LMHeadModel.from_pretrained(model_name).to(torch.get_default_device()).eval()
