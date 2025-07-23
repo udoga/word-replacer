@@ -32,11 +32,11 @@ class BertSubstituter:
         target_index = self.find_token_index(r.text, r.position)
         target_id = token_ids[target_index]
         target_token = tokens[target_index].strip()
-        assert self.excluder.has_same_root(r.target, target_token), f"Target {r.target} != {target_token} at {target_index}"
+        assert self.excluder.has_same_root(r.target, target_token), f"{r.target} != {target_token} at {target_index}"
         clear_embeddings = self.get_input_embeddings(token_ids)
         clear_output = self.get_output_from_embeddings(clear_embeddings)
         vocab_probs = self.get_average_vocab_probs(clear_embeddings, target_index)
-        candidate_ids = torch.topk(vocab_probs, k=self.candidate_count, dim=0).indices
+        candidate_ids = self.get_ids_from_tokens(r.candidates) if r.candidates else self.get_top_ids(vocab_probs)
         candidate_tokens = self.get_tokens_from_ids(candidate_ids.tolist())
         t['candidate'] = [t.strip() for t in candidate_tokens]
         t['is_included'] = self.excluder.are_candidates_included(candidate_tokens, r.target, r.tag)
@@ -81,6 +81,12 @@ class BertSubstituter:
     def get_tokens_from_ids(self, token_ids):
         return [self.normalize_token(t) for t in self.tokenizer.convert_ids_to_tokens(token_ids)]
 
+    def get_id_from_token(self, token):
+        return self.tokenizer(' ' + token, add_special_tokens=False).input_ids[0]
+
+    def get_ids_from_tokens(self, tokens):
+        return torch.tensor([self.get_id_from_token(t) for t in tokens])
+
     def normalize_token(self, token):
         if isinstance(self.model, RobertaForMaskedLM): return token.replace("Ġ", " ")
         if isinstance(self.model, BertForMaskedLM): return (" " + token).replace(" ##", "")
@@ -95,6 +101,9 @@ class BertSubstituter:
     def get_batch_input_embeddings(self, encodings) -> Tensor:
         with torch.no_grad():
             return self.model.get_input_embeddings()(torch.tensor(encodings))
+
+    def get_top_ids(self, vocab_probs):
+        return torch.topk(vocab_probs, k=self.candidate_count, dim=0).indices
 
     def get_average_vocab_probs(self, clear_embeddings, target_index):
         vocab_probs = torch.zeros(self.get_vocabulary_size(), dtype=torch.float32)
