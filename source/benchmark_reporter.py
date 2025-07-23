@@ -2,7 +2,7 @@ import pandas as pd
 import csv
 from nltk import WordNetLemmatizer
 from statistics import mean
-from source.gap_scorer import GeneralizedAveragePrecision
+from external.generalized_average_precision import GeneralizedAveragePrecision
 
 class BenchmarkReporter:
     def __init__(self, dataset_folder, print_tables=False, print_progress=False):

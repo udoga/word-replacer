@@ -1,5 +1,4 @@
-# This source file was copied from:
-# https://github.com/orenmel/lexsub/blob/master/jcs/evaluation/measures/generalized_average_precision.py
+# Source: https://github.com/orenmel/lexsub/blob/master/jcs/evaluation/measures/generalized_average_precision.py
 
 '''
 See following paper for quick description of GAP:
