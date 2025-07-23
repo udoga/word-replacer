@@ -6,9 +6,10 @@ from external.generalized_average_precision import GeneralizedAveragePrecision
 from source.substitution_request import SubstitutionRequest
 
 class BenchmarkReporter:
-    def __init__(self, dataset_folder, print_tables=False, print_progress=False):
+    def __init__(self, dataset_folder, provide_candidates=False, print_tables=False, print_progress=False):
         self.frame = None
         self.dataset_folder = dataset_folder
+        self.provide_candidates = provide_candidates
         self.print_tables = print_tables
         self.print_progress = print_progress
         self.lemmatizer = WordNetLemmatizer()
@@ -81,7 +82,8 @@ class BenchmarkReporter:
     def get_predictions(self, idx, substituter, text, target, position, tag):
         if self.print_progress: print(f"\rLoading predictions: {idx}/{self.frame.iloc[-1].name} ", end='', flush=True)
         try:
-            table = substituter.substitute(SubstitutionRequest(text, target, position, tag))
+            candidates = self.get_gold_candidates(target) if self.provide_candidates else None
+            table = substituter.substitute(SubstitutionRequest(text, target, position, tag, candidates))
             if self.print_tables: print(f"Id={idx} Target={target} Position={position} Text={text}\n{table}\n")
             return list(table)[:10]
         except Exception as e:
@@ -101,3 +103,8 @@ class BenchmarkReporter:
         gold_pairs = [[k, v] for k, v in gold_map.items()]
         prediction_pairs = [[predictions[i], len(predictions)-i] for i in range(len(predictions))]
         return GeneralizedAveragePrecision.calc(gold_pairs, prediction_pairs)
+
+    def get_gold_candidates(self, target_word):
+        gold_maps = self.frame[self.frame["target"] == target_word]["gold_map"].to_list()
+        gold_candidates = [candidate for gold_map in gold_maps for candidate in gold_map.keys()]
+        return sorted(list(set(gold_candidates)))

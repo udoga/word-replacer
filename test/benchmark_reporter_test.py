@@ -135,3 +135,7 @@ class BenchmarkReporterTest(TestCase):
         self.reporter.load_dataset("lst_test")
         self.assertEqual("about", self.reporter.get_frame().loc[566].target)
         self.assertRaises(KeyError, lambda: self.reporter.get_frame().loc[567])
+
+    def test_finds_gold_candidates_by_target(self):
+        self.reporter.load_dataset("lst_trial")
+        self.assertEqual(["documentary", "movie", "picture", "production"], self.reporter.get_gold_candidates("film"))
