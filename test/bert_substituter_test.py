@@ -5,6 +5,7 @@ from torch import Tensor
 from unittest import TestCase
 from source.bert_substituter import BertSubstituter
 from source.substitution_table import SubstitutionTable
+from source.substitution_request import SubstitutionRequest
 
 class DropoutSubstituterTest(TestCase):
     @classmethod
@@ -54,10 +55,10 @@ class DropoutSubstituterTest(TestCase):
 
     def test_compares_given_target_and_found_target(self):
         text = "so , unlike studio films , independent films"
-        self.assertRaises(AssertionError, self.substituter.substitute, text, "film", 0)
-        self.assertRaises(AssertionError, self.substituter.substitute, text, "film", 3)
-        self.substituter.substitute(text, "film", 4) # no error
-        self.substituter.substitute(text, "film", 7) # no error
+        self.assertRaises(AssertionError, self.substituter.substitute, SubstitutionRequest(text, "film", 0))
+        self.assertRaises(AssertionError, self.substituter.substitute, SubstitutionRequest(text, "film", 3))
+        self.substituter.substitute(SubstitutionRequest(text, "film", 4)) # no error
+        self.substituter.substitute(SubstitutionRequest(text, "film", 7)) # no error
 
     def test_duplicates_sentence_when_concatenation_is_enabled(self):
         substituter = BertSubstituter("roberta-base", concatenate=True)
@@ -67,7 +68,7 @@ class DropoutSubstituterTest(TestCase):
 
     def test_substitution_table_contains_a_column_indicating_exclusion(self):
         text = "The wine was too strong to drink."
-        table: SubstitutionTable = self.substituter.substitute(text, "strong", 4)
+        table: SubstitutionTable = self.substituter.substitute(SubstitutionRequest(text, "strong", 4))
         self.assertEqual("strong", table["candidate"][0])
         self.assertFalse(table["is_included"][0])
-        self.assertTrue("strong" not in list(self.substituter.substitute(text, "strong", 4)))
+        self.assertTrue("strong" not in list(self.substituter.substitute(SubstitutionRequest(text, "strong", 4))))

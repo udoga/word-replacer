@@ -3,6 +3,7 @@ import csv
 from nltk import WordNetLemmatizer
 from statistics import mean
 from external.generalized_average_precision import GeneralizedAveragePrecision
+from source.substitution_request import SubstitutionRequest
 
 class BenchmarkReporter:
     def __init__(self, dataset_folder, print_tables=False, print_progress=False):
@@ -80,7 +81,7 @@ class BenchmarkReporter:
     def get_predictions(self, idx, substituter, text, target, position, tag):
         if self.print_progress: print(f"\rLoading predictions: {idx}/{self.frame.iloc[-1].name} ", end='', flush=True)
         try:
-            table = substituter.substitute(text, target, position, tag)
+            table = substituter.substitute(SubstitutionRequest(text, target, position, tag))
             if self.print_tables: print(f"Id={idx} Target={target} Position={position} Text={text}\n{table}\n")
             return list(table)[:10]
         except Exception as e:

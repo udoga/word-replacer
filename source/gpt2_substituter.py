@@ -3,6 +3,7 @@ from pandas import DataFrame
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from source.candidate_excluder import CandidateExcluder
 from source.substitution_table import SubstitutionTable
+from source.substitution_request import SubstitutionRequest
 
 class Gpt2Substituter:
     def __init__(self, model_name, pll_enabled=False):
@@ -11,19 +12,19 @@ class Gpt2Substituter:
         self.excluder = CandidateExcluder()
         self.pll_enabled = pll_enabled
 
-    def substitute(self, text, target, position, tag="") -> SubstitutionTable:
-        words = text.split()
-        text_before = " ".join(words[:position])
-        target_index = self.find_token_index(text, position)
-        token_ids = self.tokenizer.encode(text)
+    def substitute(self, r: SubstitutionRequest) -> SubstitutionTable:
+        words = r.text.split()
+        text_before = " ".join(words[:r.position])
+        target_index = self.find_token_index(r.text, r.position)
+        token_ids = self.tokenizer.encode(r.text)
         tokens = [self.tokenizer.decode([token_id]) for token_id in token_ids]
         target_token = tokens[target_index].strip()
-        assert self.excluder.has_same_root(target, target_token), f"Target {target} != {target_token} at {target_index}"
-        prediction_probs = self.get_next_token_probabilities(text + " I repeat. " + text_before)
+        assert self.excluder.has_same_root(r.target, target_token), f"Target {r.target} != {target_token} at {target_index}"
+        prediction_probs = self.get_next_token_probabilities(r.text + " I repeat. " + text_before)
         candidate_probs, candidate_ids = torch.topk(prediction_probs, k=50)
         candidate_tokens = [self.tokenizer.decode([token_id]) for token_id in candidate_ids]
-        candidates_included = self.excluder.are_candidates_included(candidate_tokens, target, tag)
-        candidate_encodings = [self.get_candidate_encoding(text, position, c.strip()) for c in candidate_tokens]
+        candidates_included = self.excluder.are_candidates_included(candidate_tokens, r.target, r.tag)
+        candidate_encodings = [self.get_candidate_encoding(r.text, r.position, c.strip()) for c in candidate_tokens]
         pll_scores = [self.get_pll_score(e) for e in candidate_encodings]
         frame = self.create_frame(candidate_tokens, candidates_included, candidate_probs, pll_scores)
         return SubstitutionTable.from_frame(frame)
@@ -41,10 +42,7 @@ class Gpt2Substituter:
         frame['is_included'] = is_included
         frame['probability'] = probabilities.cpu()
         frame['pll_score'] = pll_scores
-        frame['probability_rank'] = frame['probability'].rank(ascending=True, method='dense').astype(int)
-        frame['pll_rank'] = frame['pll_score'].rank(ascending=True, method='dense').astype(int)
-        frame['rank'] = frame['probability_rank'] + frame['pll_rank']
-        frame = frame.sort_values(by=["rank"], ascending=False)
+        frame = frame.sort_values(by=["probability"], ascending=False)
         return frame.set_index('candidate')
 
     def get_candidate_encoding(self, text, position, candidate_token):

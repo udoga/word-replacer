@@ -5,6 +5,7 @@ from nltk.stem import WordNetLemmatizer
 from transformers import RobertaForMaskedLM, BertForMaskedLM
 from source.candidate_excluder import CandidateExcluder
 from source.substitution_table import SubstitutionTable
+from source.substitution_request import SubstitutionRequest
 
 class BertSubstituter:
     def __init__(self, model_name, dropout_rate = 0.3, candidate_count = 50, alpha = 0.01, iteration_count=1,
@@ -24,21 +25,21 @@ class BertSubstituter:
         self.cos_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
         self.mask_embedding = self.get_input_embedding(self.tokenizer.mask_token_id)
 
-    def substitute(self, text, target, position, tag="") -> SubstitutionTable:
+    def substitute(self, r: SubstitutionRequest) -> SubstitutionTable:
         t = SubstitutionTable()
-        token_ids = self.get_token_ids_from_text(text)
+        token_ids = self.get_token_ids_from_text(r.text)
         tokens = self.get_tokens_from_ids(token_ids)
-        target_index = self.find_token_index(text, position)
+        target_index = self.find_token_index(r.text, r.position)
         target_id = token_ids[target_index]
         target_token = tokens[target_index].strip()
-        assert self.excluder.has_same_root(target, target_token), f"Target {target} != {target_token} at {target_index}"
+        assert self.excluder.has_same_root(r.target, target_token), f"Target {r.target} != {target_token} at {target_index}"
         clear_embeddings = self.get_input_embeddings(token_ids)
         clear_output = self.get_output_from_embeddings(clear_embeddings)
         vocab_probs = self.get_average_vocab_probs(clear_embeddings, target_index)
         candidate_ids = torch.topk(vocab_probs, k=self.candidate_count, dim=0).indices
         candidate_tokens = self.get_tokens_from_ids(candidate_ids.tolist())
         t['candidate'] = [t.strip() for t in candidate_tokens]
-        t['is_included'] = self.excluder.are_candidates_included(candidate_tokens, target, tag)
+        t['is_included'] = self.excluder.are_candidates_included(candidate_tokens, r.target, r.tag)
         t['candidate_prob'] = vocab_probs[candidate_ids].cpu()
         t['normalized_prob'] = self.get_normalized_probs(t['candidate_prob'], vocab_probs[target_id].item())
         t['proposal_score'] = torch.log(t['normalized_prob'])

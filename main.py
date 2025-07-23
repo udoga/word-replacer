@@ -1,17 +1,16 @@
 import torch
 from pathlib import Path
-
-from source.bart_scorer import BartScorer
 from source.gpt2_substituter import Gpt2Substituter
 from source.gpt4_substituter import Gpt4Substituter
 from source.pattern_substituter import PatternSubstituter
+from source.bart_substituter import BartSubstituter
 from source.bert_substituter import BertSubstituter
 from source.benchmark_reporter import BenchmarkReporter
-from source.modular_substituter import ModularSubstituter
+from source.substitution_request import SubstitutionRequest
 
 def run_substituter(substituter):
     text = "The wine he sent to me as my birthday gift is too strong to drink."
-    table = substituter.substitute(text, target="strong", position=12)
+    table = substituter.substitute(SubstitutionRequest(text, target="strong", position=12))
     print(table)
 
 def run_benchmark(substituter):
@@ -27,7 +26,7 @@ def get_substituter(name):
     if name == "pattern": return PatternSubstituter(get_substituter("dropout"), ["%", "or", "%"], position_change=2)
     if name == "gpt2": return Gpt2Substituter("gpt2-large", pll_enabled=False)
     if name == "gpt4": return Gpt4Substituter("gpt-4o", temperature=0.7)
-    if name == "bart": return ModularSubstituter(proposer=get_substituter("gpt2"), scorer=BartScorer())
+    if name == "bart": return BartSubstituter(proposer=get_substituter("gpt2"))
     raise Exception("Unknown substituter:", name)
 
 torch.set_default_device(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
