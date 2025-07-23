@@ -6,11 +6,12 @@ from source.substitution_table import SubstitutionTable
 from source.substitution_request import SubstitutionRequest
 
 class Gpt2Substituter:
-    def __init__(self, model_name, pll_enabled=False):
+    def __init__(self, model_name, pll_enabled=False, candidate_count=50):
         self.tokenizer = GPT2Tokenizer.from_pretrained(model_name)
         self.model = GPT2LMHeadModel.from_pretrained(model_name).to(torch.get_default_device()).eval()
         self.excluder = CandidateExcluder()
         self.pll_enabled = pll_enabled
+        self.candidate_count = candidate_count
 
     def substitute(self, r: SubstitutionRequest) -> SubstitutionTable:
         words = r.text.split()
@@ -21,7 +22,8 @@ class Gpt2Substituter:
         target_token = tokens[target_index].strip()
         assert self.excluder.has_same_root(r.target, target_token), f"Target {r.target} != {target_token} at {target_index}"
         prediction_probs = self.get_next_token_probabilities(r.text + " I repeat. " + text_before)
-        candidate_probs, candidate_ids = torch.topk(prediction_probs, k=50)
+        candidate_ids = self.get_ids_from_tokens(r.candidates) if r.candidates else self.get_top_ids(prediction_probs)
+        candidate_probs = prediction_probs[candidate_ids]
         candidate_tokens = [self.tokenizer.decode([token_id]) for token_id in candidate_ids]
         candidates_included = self.excluder.are_candidates_included(candidate_tokens, r.target, r.tag)
         candidate_encodings = [self.get_candidate_encoding(r.text, r.position, c.strip()) for c in candidate_tokens]
@@ -65,3 +67,12 @@ class Gpt2Substituter:
         text_before = " ".join(words[:position+1])
         encoding = self.tokenizer.encode(text_before)
         return len(encoding) - 1
+
+    def get_id_from_token(self, token):
+        return self.tokenizer(' ' + token, add_special_tokens=False).input_ids[0]
+
+    def get_ids_from_tokens(self, tokens):
+        return torch.tensor([self.get_id_from_token(t) for t in tokens])
+
+    def get_top_ids(self, prediction_probs):
+        return torch.topk(prediction_probs, k=self.candidate_count).indices
