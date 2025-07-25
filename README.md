@@ -10,6 +10,10 @@
 * Run unit tests: `pytest`
 * Run substituter or benchmark: `python main.py`
 
+### Llama Setup
+* `huggingface-cli login` and enter your access token.
+* `huggingface-cli download bartowski/Meta-Llama-3.1-8B-Instruct-GGUF --include '*Q4_K_M.gguf' --local-dir models`
+
 ### Results
 
 | Dataset | Method  | best  | best-mode | oot   | oot-mode | P@1   |
