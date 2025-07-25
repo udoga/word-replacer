@@ -2,9 +2,10 @@ from llama_cpp import Llama
 from source.substitution_request import SubstitutionRequest
 
 class LlamaSubstituter:
-    def __init__(self, model_path):
-        self.llm=Llama(
-            model_path=model_path,
+    def __init__(self):
+        self.llm=Llama.from_pretrained(
+            repo_id="bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
+            filename="Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
             n_ctx=4096,
             n_gpu_layers=-1,
             seed=0,

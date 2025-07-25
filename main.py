@@ -28,7 +28,7 @@ def get_substituter(name):
     if name == "gpt2": return Gpt2Substituter("gpt2-large", pll_enabled=False)
     if name == "gpt4": return Gpt4Substituter("gpt-4o", temperature=0.7)
     if name == "bart": return BartSubstituter(proposer=get_substituter("gpt2"))
-    if name == "llama": return LlamaSubstituter("models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf")
+    if name == "llama": return LlamaSubstituter()
     raise Exception("Unknown substituter:", name)
 
 torch.set_default_device(torch.device("cuda" if torch.cuda.is_available() else "cpu"))

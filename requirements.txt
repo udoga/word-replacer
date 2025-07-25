@@ -7,4 +7,4 @@ accelerate
 nltk
 openai
 llama-cpp-python
-huggingface_hub[cli]
+huggingface_hub
