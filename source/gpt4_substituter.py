@@ -1,8 +1,8 @@
 import json
 from openai import OpenAI
-from candidate_excluder import CandidateExcluder
-from substitution_request import SubstitutionRequest
-from substitution_table import SubstitutionTable
+from source.candidate_excluder import CandidateExcluder
+from source.substitution_request import SubstitutionRequest
+from source.substitution_table import SubstitutionTable
 
 class Gpt4Substituter:
     def __init__(self, model="gpt-4o", temperature=0.7):

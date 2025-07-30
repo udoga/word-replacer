@@ -1,5 +1,5 @@
-from substitution_table import SubstitutionTable
-from substitution_request import SubstitutionRequest
+from source.substitution_table import SubstitutionTable
+from source.substitution_request import SubstitutionRequest
 from external.bart_score import BARTScorer
 
 class BartSubstituter:

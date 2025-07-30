@@ -1,11 +1,11 @@
 import re
 import pandas as pd
+from typing import List
 from llama_cpp import Llama
 from llama_cpp import llama_cpp as low
-from candidate_excluder import CandidateExcluder
+from source.candidate_excluder import CandidateExcluder
 from source.substitution_request import SubstitutionRequest
-from typing import List
-from substitution_table import SubstitutionTable
+from source.substitution_table import SubstitutionTable
 
 class LlamaSubstituter:
     def __init__(self, proposer=None, target_similarity_enabled=False):
@@ -38,13 +38,13 @@ class LlamaSubstituter:
 
     def propose_candidates(self, r: SubstitutionRequest, target_word) -> List[str]:
         messages = [
-            {"role": "system", "content": "List 10 common words that can replace the target word best."},
+            {"role": "system", "content": "List 15 common words that can replace the target word best."},
             {"role": "user", "content": f'Sentence: "{r.text}"\nTarget word: "{target_word}"\nPosition: {r.position}'}]
         self.set_llama_embeddings(False)
         output = self.model.create_chat_completion(messages=messages, temperature=0.0)
         response = output["choices"][0]["message"]["content"]
         word_list = self.extract_word_list(response)
-        return [word for word in word_list if " " not in word]
+        return [word.split()[-1] for word in word_list]
 
     def get_substitution_table(self, candidates, is_included, target_similarities, sentence_similarities):
         return SubstitutionTable.from_frame(pd.DataFrame({
