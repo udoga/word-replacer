@@ -1,11 +1,11 @@
-pytest
-numpy
-pandas
-torch
-transformers
-accelerate
-nltk
-openai
-huggingface_hub
+pytest==8.4.0
+numpy==2.3.0
+pandas==2.3.0
+torch==2.7.1
+transformers==4.52.4
+accelerate==1.8.1
+nltk==3.9.1
+openai==1.97.0
+huggingface-hub==0.32.6
 --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
 llama-cpp-python==0.3.13
