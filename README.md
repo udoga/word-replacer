@@ -9,7 +9,7 @@
 * Download dataset: `./download_dataset.sh`
 * Run unit tests: `pytest`
 * Run substituter or benchmark: `python main.py`
-* For running Llama: `huggingface-cli login`
+* For Llama (optional): `hf auth login --token YOUR_HF_TOKEN`
 
 ### Results
 

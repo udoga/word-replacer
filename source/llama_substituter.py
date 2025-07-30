@@ -1,18 +1,20 @@
 import re
 import pandas as pd
+import llama_cpp
 from typing import List
-from llama_cpp import Llama
-from llama_cpp import llama_cpp as low
 from source.candidate_excluder import CandidateExcluder
 from source.substitution_request import SubstitutionRequest
 from source.substitution_table import SubstitutionTable
+from importlib.util import find_spec
+from pathlib import Path
 
 class LlamaSubstituter:
     def __init__(self, proposer=None, target_similarity_enabled=False):
         self.proposer = proposer
         self.target_similarity_enabled = target_similarity_enabled
         self.excluder = CandidateExcluder()
-        self.model = Llama.from_pretrained(
+        self.lib = llama_cpp.load_shared_library("llama", Path(find_spec("llama_cpp").origin).parent / "lib")
+        self.model = llama_cpp.Llama.from_pretrained(
             repo_id="bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
             filename="Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
             n_ctx=2048,
@@ -21,6 +23,7 @@ class LlamaSubstituter:
             chat_format="llama-3",
             verbose=False,
             embedding=True)
+        print("GPU offload support:", bool(self.lib.llama_supports_gpu_offload()))
 
     def substitute(self, r: SubstitutionRequest) -> SubstitutionTable:
         target_word = r.text.split()[r.position]
@@ -123,4 +126,4 @@ class LlamaSubstituter:
         return [x for embedding in embeddings for x in embedding]
 
     def set_llama_embeddings(self, flag: bool):
-        low.llama_set_embeddings(self.model._ctx.ctx, flag)
+        llama_cpp.llama_cpp.llama_set_embeddings(self.model._ctx.ctx, flag)
