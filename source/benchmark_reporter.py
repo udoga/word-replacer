@@ -1,5 +1,6 @@
 import pandas as pd
 import csv
+import re
 from nltk import WordNetLemmatizer
 from statistics import mean
 from external.generalized_average_precision import GeneralizedAveragePrecision
@@ -13,6 +14,7 @@ class BenchmarkReporter:
         self.print_tables = print_tables
         self.print_progress = print_progress
         self.lemmatizer = WordNetLemmatizer()
+        self.non_ascii_regex = re.compile(r'[^\x00-\x7F]+')
 
     def get_frame(self) -> pd.DataFrame:
         return self.frame
@@ -27,6 +29,7 @@ class BenchmarkReporter:
         self.frame = pd.read_csv(str(self.dataset_folder / file_name), names=["target", "id", "position", "text"],
                                  sep="\t", header=None, encoding="iso-8859-1", engine="python", quoting=csv.QUOTE_NONE)
         self.frame = self.frame.set_index("id")
+        self.frame["text"] = self.frame["text"].apply(lambda s: self.non_ascii_regex.sub('', s))
         self.frame[['target', 'tag']] = (self.frame['target'].str.split('.', n=1, expand=True))
         self.frame['gold_map'] = [{} for _ in range(len(self.frame))]
 
