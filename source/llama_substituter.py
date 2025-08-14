@@ -9,9 +9,10 @@ from importlib.util import find_spec
 from pathlib import Path
 
 class LlamaSubstituter:
-    def __init__(self, proposer=None, target_similarity_enabled=False):
+    def __init__(self, proposer=None, target_similarity_enabled=False, sentence_similarity_enabled=False):
         self.proposer = proposer
         self.target_similarity_enabled = target_similarity_enabled
+        self.sentence_similarity_enabled = sentence_similarity_enabled
         self.excluder = CandidateExcluder()
         self.lib = llama_cpp.load_shared_library("llama", Path(find_spec("llama_cpp").origin).parent / "lib")
         self.model = llama_cpp.Llama.from_pretrained(
@@ -28,7 +29,7 @@ class LlamaSubstituter:
     def substitute(self, r: SubstitutionRequest) -> SubstitutionTable:
         target_word = r.text.split()[r.position]
         candidates = [target_word] + self.get_candidates(r, target_word)
-        is_included = self.excluder.are_candidates_included([" " + c for c in candidates], r.target, r.tag)
+        is_included = [False] + [True] * (len(candidates)-1)
         candidate_sentences = self.get_candidate_sentences(r.text, r.position, candidates)
         target_similarities = self.get_target_similarities(r.text, r.position, candidate_sentences)
         sentence_similarities = self.get_sentence_similarities(r.text, r.position, candidate_sentences)
@@ -41,13 +42,13 @@ class LlamaSubstituter:
 
     def propose_candidates(self, r: SubstitutionRequest, target_word) -> List[str]:
         messages = [
-            {"role": "system", "content": "List 15 common words that can replace the target word best."},
+            {"role": "system", "content": "List 10 common words that can replace the target word best."},
             {"role": "user", "content": f'Sentence: "{r.text}"\nTarget word: "{target_word}"\nPosition: {r.position}'}]
         self.set_llama_embeddings(False)
         output = self.model.create_chat_completion(messages=messages, temperature=0.0)
         response = output["choices"][0]["message"]["content"]
         word_list = self.extract_word_list(response)
-        return [word.split()[-1] for word in word_list]
+        return list(dict.fromkeys([word.split()[-1] for word in word_list]))
 
     def get_substitution_table(self, candidates, is_included, target_similarities, sentence_similarities):
         return SubstitutionTable.from_frame(pd.DataFrame({
@@ -59,10 +60,10 @@ class LlamaSubstituter:
 
     def extract_word_list(self, response: str) -> List[str]:
         pattern = re.compile(r'^\s*\d+\s*[\.\)\-]\s*(.+)$')
-        return list(dict.fromkeys([
+        return [
             m.group(1).strip().lower()
             for line in response.splitlines()
-            if (m := pattern.match(line))]))
+            if (m := pattern.match(line))]
 
     def get_candidate_sentences(self, text, position, candidates):
         candidate_sentences = []
@@ -104,6 +105,7 @@ class LlamaSubstituter:
         return self.get_token_embeddings(text)[self.get_last_token_index(text, position)]
 
     def get_sentence_similarities(self, text, position, candidate_sentences):
+        if not self.sentence_similarity_enabled: return [0.0] * len(candidate_sentences)
         original_embedding = self.get_sentence_embedding(text, position)
         similarities = [self.get_sentence_similarity(s, position, original_embedding) for s in candidate_sentences]
         return self.normalise(similarities)
