@@ -1,16 +1,18 @@
+from pandas import DataFrame
 from source.substitution_table import SubstitutionTable
 from source.substitution_request import SubstitutionRequest
 from external.bart_score import BARTScorer
 
 class BartSubstituter:
-    def __init__(self, proposer):
+    def __init__(self, proposer=None):
         self.proposer = proposer
         self.scorer = BARTScorer(device="cpu", checkpoint='facebook/bart-large-cnn')
 
     def substitute(self, r: SubstitutionRequest) -> SubstitutionTable:
-        table = self.proposer.substitute(r)
-        table["bart_score"] = self.score_candidates(r.text, r.position, table['candidate'])
-        return SubstitutionTable.from_frame(table.to_frame().sort_values(by="bart_score", ascending=False))
+        frame = DataFrame({"candidate": r.candidates if r.candidates else []}).set_index("candidate")
+        if self.proposer: frame = self.proposer.substitute(r).to_frame()
+        frame["bart_score"] = self.score_candidates(r.text, r.position, frame.index.tolist())
+        return SubstitutionTable.from_frame(frame.sort_values(by="bart_score", ascending=False))
 
     def score_candidates(self, text, position, candidates):
         words = text.split()
