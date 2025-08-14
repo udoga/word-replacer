@@ -9,7 +9,7 @@ from source.substitution_request import SubstitutionRequest
 
 class BertSubstituter:
     def __init__(self, model_name, dropout_rate = 0.3, candidate_count = 50, alpha = 0.01, iteration_count=1,
-                 deterministic=True, concatenate=False, use_mask_token=False):
+                 deterministic=True, concatenate=False, use_mask_token=False, score_basis="target_similarity"):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, do_lower_case=True, add_prefix_space=True)
         self.model = AutoModelForMaskedLM.from_pretrained(model_name, output_hidden_states=True, output_attentions=True,
                 attn_implementation="eager").to(torch.get_default_device())
@@ -22,6 +22,7 @@ class BertSubstituter:
         self.deterministic = deterministic
         self.concatenate = concatenate
         self.use_mask_token = use_mask_token
+        self.score_basis = score_basis
         self.cos_similarity = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
         self.mask_embedding = self.get_input_embedding(self.tokenizer.mask_token_id)
 
@@ -51,7 +52,7 @@ class BertSubstituter:
         token_target_attentions = self.get_average_attention_matrix(clear_output)[:, target_index]
         token_target_weights = token_target_attentions / token_target_attentions.sum()
         t['validation_score'] = torch.matmul(alternatives_token_similarities, token_target_weights).cpu()
-        t['final_score'] = t['target_similarity'] + self.alpha * t['proposal_score'].cpu()
+        t['final_score'] = t[self.score_basis] + self.alpha * t['proposal_score'].cpu()
         return SubstitutionTable.from_frame(t.to_frame().sort_values(by=["final_score"], ascending=False))
 
     def get_output_from_encodings(self, encodings):
