@@ -36,7 +36,8 @@ class BenchmarkReporter:
                 left, right = [p.strip() for p in line.strip().split("::")]
                 idx = int(left.split()[-1])
                 gold_map = {" ".join(c.split()[:-1]): int(c.split()[-1]) for c in right.split(";") if c.strip()}
-                self.frame.at[idx, "gold_map"] = {k: v for k, v in gold_map.items() if ' ' not in k}
+                gold_map = {k: v for k, v in gold_map.items() if ' ' not in k}
+                self.frame.at[idx, "gold_map"] = gold_map
                 self.frame.at[idx, "tie"] = len(self.get_top_golds(gold_map)) > 1
         self.frame = self.frame[self.frame['gold_map'].map(bool)]
 
