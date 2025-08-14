@@ -7,9 +7,11 @@ from external.generalized_average_precision import GeneralizedAveragePrecision
 from source.substitution_request import SubstitutionRequest
 
 class BenchmarkReporter:
-    def __init__(self, dataset_folder, provide_candidates=False, print_tables=False, print_progress=False):
+    def __init__(self, dataset_folder, report_path=None, provide_candidates=False, print_tables=False,
+            print_progress=False):
         self.frame = None
         self.dataset_folder = dataset_folder
+        self.report_file = open(report_path, 'w', encoding='utf-8') if report_path else None
         self.provide_candidates = provide_candidates
         self.print_tables = print_tables
         self.print_progress = print_progress
@@ -78,10 +80,12 @@ class BenchmarkReporter:
         }
 
     def print_report(self):
-        print(self.get_frame().to_string(max_colwidth=120))
-        print("\nFinal scores:")
+        print("\nFinal scores:", file=self.report_file)
         for label, score in self.get_average_scores().items():
-            print(f"{label:>20}: {score:.6f}")
+            print(f"{label:>20}: {score:.6f}", file=self.report_file)
+        print("\nBenchmark table:", file=self.report_file)
+        print(self.get_frame().to_string(max_colwidth=120), file=self.report_file)
+        print("Benchmark report: " + self.report_file.name)
 
     def get_predictions(self, idx, substituter, text, target, position, tag):
         if self.print_progress: print(f"\rLoading predictions: {idx}/{self.frame.iloc[-1].name} ", end='', flush=True)
@@ -91,7 +95,7 @@ class BenchmarkReporter:
             if self.print_tables: print(f"Id={idx} Target={target} Position={position} Text={text}\n{table}\n")
             return list(table)[:10]
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Skipping record {idx}: {e}", file=self.report_file)
         return []
 
     def get_vote_weight(self, prediction, gold_map):

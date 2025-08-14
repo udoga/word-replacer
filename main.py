@@ -15,20 +15,21 @@ def run_substituter(substituter):
     print(table)
 
 def run_benchmark(substituter):
-    reporter = BenchmarkReporter(Path(__file__).resolve().parents[0] / "dataset", print_progress=True)
+    reporter = BenchmarkReporter(Path(__file__).resolve().parents[0] / "dataset", report_path="report.txt", print_progress=True)
     reporter.load_dataset("lst_trial")
     reporter.load_predictions(substituter)
     reporter.load_scores()
     reporter.print_report()
 
 def get_substituter(name):
+    if name == "zhou": return BertSubstituter("bert-large-uncased", iteration_count=5, score_basis="validation_score")
     if name == "dropout": return BertSubstituter("roberta-base", dropout_rate=0.3, iteration_count=5, alpha=0.01)
     if name == "concat": return BertSubstituter("roberta-base", concatenate=True, dropout_rate=1, use_mask_token=True)
     if name == "pattern": return PatternSubstituter(get_substituter("dropout"), ["%", "or", "%"], position_change=2)
     if name == "gpt2": return Gpt2Substituter("gpt2-large", pll_enabled=False)
     if name == "gpt4": return Gpt4Substituter("gpt-4o", temperature=0.7)
-    if name == "bart": return BartSubstituter(proposer=get_substituter("gpt2"))
-    if name == "llama": return LlamaSubstituter()
+    if name == "llama": return LlamaSubstituter(target_similarity_enabled=False, sentence_similarity_enabled=False)
+    if name == "bart": return BartSubstituter(proposer=get_substituter("llama"))
     raise Exception("Unknown substituter:", name)
 
 torch.set_default_device(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
