@@ -85,7 +85,7 @@ class BenchmarkReporter:
             print(f"{label:>20}: {score:.6f}", file=self.report_file)
         print("\nBenchmark table:", file=self.report_file)
         print(self.get_frame().to_string(max_colwidth=120), file=self.report_file)
-        print("Benchmark report: " + self.report_file.name)
+        if self.report_file: print("Benchmark report: " + self.report_file.name)
 
     def get_predictions(self, idx, substituter, text, target, position, tag):
         if self.print_progress: print(f"\rLoading predictions: {idx}/{self.frame.iloc[-1].name} ", end='', flush=True)
