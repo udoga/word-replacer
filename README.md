@@ -28,3 +28,7 @@
 | LS07-test | GPT2-Beam  | 17.84 | 28.93     | 51.17 | 66.89    | 41.56 |
 | LS07-test | GPT4-List  | 30.08 | 48.27     | 71.23 | 83.25    | 68.60 |
 | LS07-test | Llama-List | 24.88 | 40.32     | 59.54 | 72.37    | 57.79 |
+
+### Dissertation
+
+Full research methodology and benchmarking results are available in my [dissertation](dissertation.pdf).
